@@ -319,6 +319,8 @@ final class EQProcessor {
 
     private let lock: UnsafeMutablePointer<os_unfair_lock>
     private let meter: UnsafeMutablePointer<Float>
+    /// Gain appliqué en ce moment par le volume nivelé (dB) ; NaN quand il est coupé.
+    private let levelMeter: UnsafeMutablePointer<Float>
     /// Tampon circulaire des derniers échantillons de sortie (mono), lu par l'analyseur de spectre.
     static let scopeSize = 16384
     private let scope: UnsafeMutablePointer<Float>
@@ -345,6 +347,8 @@ final class EQProcessor {
         lock.initialize(to: os_unfair_lock())
         meter = .allocate(capacity: 1)
         meter.initialize(to: 1)
+        levelMeter = .allocate(capacity: 1)
+        levelMeter.initialize(to: .nan)
         scope = .allocate(capacity: Self.scopeSize)
         scope.initialize(repeating: 0, count: Self.scopeSize)
         scopeWritten = .allocate(capacity: 1)
@@ -354,6 +358,7 @@ final class EQProcessor {
     deinit {
         lock.deallocate()
         meter.deallocate()
+        levelMeter.deallocate()
         scope.deallocate()
         scopeWritten.deallocate()
     }
@@ -395,6 +400,12 @@ final class EQProcessor {
 
     /// Thread principal : plus petit gain appliqué par le limiteur depuis le dernier appel
     /// (1 = aucune réduction ; < 1 aussi en cas de saturation, limiteur coupé). Remet à zéro.
+    /// Thread principal : gain actuel du volume nivelé (dB), nil s'il est coupé.
+    func levelerGainDB() -> Float? {
+        let v = levelMeter.pointee
+        return v.isNaN ? nil : v
+    }
+
     func takeLimiterGain() -> Float {
         let g = meter.pointee
         meter.pointee = 1
@@ -477,6 +488,7 @@ final class EQProcessor {
         var minGain = 1.0
         let o = activeOut
         var env = levelEnv
+        var levelDB = 0.0
         var (lpL, lpR) = crossLP
         var written = scopeWritten.pointee
         let scopeMask = Self.scopeSize - 1
@@ -515,6 +527,7 @@ final class EQProcessor {
                 var gainDB = envDB > o.threshold ? (o.threshold - envDB) * (1 - 1 / o.ratio) : 0
                 // Pas de remontée sur le silence (on n'amplifie pas le souffle).
                 gainDB += o.makeup * min(max((envDB + 70) / 20, 0), 1)
+                levelDB = gainDB
                 let lg = pow(10, gainDB / 20)
                 l *= lg
                 r *= lg
@@ -548,6 +561,7 @@ final class EQProcessor {
         }
         limiterGain = g
         levelEnv = env.isFinite ? env : 0
+        levelMeter.pointee = o.leveler && levelDB.isFinite ? Float(levelDB) : .nan
         crossLP = lpL.isFinite && lpR.isFinite ? (lpL, lpR) : (0, 0)
         let m = Float(minGain)
         if m < meter.pointee { meter.pointee = m }

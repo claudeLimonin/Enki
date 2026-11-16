@@ -20,6 +20,8 @@ final class SpectrumAnalyzer: ObservableObject {
     private static let fps = 30.0
 
     @Published private(set) var levels = [Float](repeating: 0, count: barCount)
+    /// Effet actuel du volume nivelé (dB), lissé pour l'affichage ; nil s'il est coupé.
+    @Published private(set) var levelerDB: Double?
 
     /// 8192 points : ~6 Hz de résolution à 48 kHz, nécessaire pour séparer les graves.
     private let size = 8192
@@ -56,6 +58,7 @@ final class SpectrumAnalyzer: ObservableObject {
         timer?.invalidate()
         timer = nil
         levels = [Float](repeating: 0, count: Self.barCount)
+        levelerDB = nil
     }
 
     private func tick(processor: EQProcessor, sampleRate: Double) {
@@ -74,6 +77,14 @@ final class SpectrumAnalyzer: ObservableObject {
             next[i] = max(target[i], levels[i] - fall)
         }
         if next != levels { levels = next }
+
+        // Volume nivelé : suivi doux (≈ 0,3 s) pour une courbe lisible, qui bouge avec la musique.
+        if let target = processor.levelerGainDB().map(Double.init) {
+            let shown = levelerDB.map { $0 + (target - $0) * 0.15 } ?? target
+            if levelerDB == nil || abs(shown - levelerDB!) > 0.02 { levelerDB = shown }
+        } else if levelerDB != nil {
+            levelerDB = nil
+        }
     }
 
     /// Hauteur cible (0…1) de chaque barre pour la fenêtre d'échantillons courante.

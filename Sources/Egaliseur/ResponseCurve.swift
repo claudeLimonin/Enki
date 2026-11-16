@@ -24,7 +24,9 @@ struct SpectrumPanel: View {
             onAdd: { f, g in
                 if let id = model.addBand(at: f, gain: g) { selectedBand = id }
             },
-            onDragEnd: { model.sortBands() })
+            onDragEnd: { model.sortBands() },
+            levelerDB: model.leveler > 0 ? analyzer.levelerDB : nil,
+            levelerName: OutputOptions.levelerNames[model.leveler])
             .onAppear { startIfNeeded() }
             .onDisappear { analyzer.stop() }
             .onChange(of: model.enabled) { _, _ in startIfNeeded() }
@@ -53,6 +55,9 @@ struct ResponseCurve: View {
     var onMove: ((UUID, Double, Double) -> Void)? = nil
     var onAdd: ((Double, Double) -> Void)? = nil
     var onDragEnd: (() -> Void)? = nil
+    /// Effet actuel du volume nivelé (dB) et nom de son niveau ; nil s'il est coupé.
+    var levelerDB: Double? = nil
+    var levelerName = ""
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var dragging: UUID?
@@ -245,6 +250,36 @@ struct ResponseCurve: View {
             ctx.fill(fill, with: .color(color.opacity(0.08)))
             ctx.stroke(main, with: .color(halo), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             ctx.stroke(main, with: .color(color), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+
+            // Volume nivelé (mode nuit) : la même courbe, décalée du gain appliqué en ce moment.
+            // Elle monte sur les passages calmes et descend sur les passages forts.
+            if let lv = levelerDB {
+                let night = Color(red: 0.42, green: 0.45, blue: 1.0)
+                let eq = EQMath.chain(settings, sampleRate: sampleRate)
+                func pt(_ i: Int, _ extra: Double) -> CGPoint {
+                    let t = Double(i) / Double(steps)
+                    let f = Self.fMin * pow(Self.fMax / Self.fMin, t)
+                    let db = eq.reduce(0) { $0 + EQMath.magnitudeDB($1, at: f, sampleRate: sampleRate) } + extra
+                    return CGPoint(x: t * w, y: y(db.clamped(to: -dbMax...dbMax), h))
+                }
+                var shifted = Path(), band = Path()
+                for i in 0...steps { i == 0 ? shifted.move(to: pt(i, lv)) : shifted.addLine(to: pt(i, lv)) }
+                band.addPath(shifted)
+                for i in stride(from: steps, through: 0, by: -1) { band.addLine(to: pt(i, 0)) }
+                band.closeSubpath()
+                ctx.fill(band, with: .color(night.opacity(dark ? 0.22 : 0.16)))
+                ctx.stroke(shifted, with: .color(night), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [5, 3]))
+                let value = String(format: "%+.1f", lv).replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ",")
+                // Étiquette sur un fond, pour rester lisible par-dessus les repères et le spectre.
+                let label = ctx.resolve(Text("☾ " + String(localized: "Mode nuit (\(levelerName)) : \(value) dB"))
+                    .font(.system(size: 10, weight: .semibold)).foregroundColor(night))
+                let size = label.measure(in: CGSize(width: w, height: 20))
+                let origin = CGPoint(x: 6, y: correction.isEmpty ? 5 : 19)
+                ctx.fill(Path(roundedRect: CGRect(x: origin.x - 4, y: origin.y - 2, width: size.width + 8, height: size.height + 4),
+                              cornerRadius: 5),
+                         with: .color(dark ? Color.black.opacity(0.55) : Color.white.opacity(0.85)))
+                ctx.draw(label, at: origin, anchor: .topLeading)
+            }
 
             // Points des bandes paramétriques.
             if parametric {
