@@ -585,3 +585,6 @@
 "Mesure %@ · %@" = "Measurement %@ · %@";
 "haut-parleurs" = "speakers";
 "Réponse mesurée, correction et résultat" = "Measured response, correction and result";
+"Rendu mesuré" = "Measured response";
+"Corriger le rendu des haut-parleurs" = "Correct the speaker response";
+"Rendu, correction et résultat" = "Response, correction and result";

@@ -17,6 +17,11 @@ enum SpeakerAnalysis {
     static let correctionBand = (low: 100.0, high: 10_000.0)
     /// Correction prudente : on baisse volontiers les pics, on remonte peu les creux.
     static let maxCut = -9.0, maxBoost = 4.0
+    /// Pas de renfort sous cette fréquence : les haut-parleurs d'un portable ne descendent pas
+    /// plus bas, les pousser ne ferait que saturer (on se contente de baisser les résonances).
+    static let minBoostFrequency = 150.0
+    /// Filtres assez larges pour une correction douce (pas de pics étroits qui se contredisent).
+    static let maxQ = 2.5
     static let maxFilters = 8
     /// En dessous de ce rapport signal/bruit (dB), la mesure n'est pas fiable.
     static let minSNR = 15.0
@@ -125,9 +130,15 @@ enum SpeakerAnalysis {
         return min(max(min(lo, hi) * 2 + 1, 0), 1)
     }
 
+    /// Renfort permis à une fréquence : nul sous 150 Hz, puis progressif jusqu'à 300 Hz
+    /// (une limite brusque créerait une marche que les filtres essaieraient de suivre).
+    static func boostLimit(_ f: Double) -> Double {
+        maxBoost * min(max(log2(f / minBoostFrequency), 0), 1)
+    }
+
     /// Correction visée en chaque point : l'inverse de l'écart mesuré, bornée et limitée à la zone fiable.
     static func target(for levels: [Double]) -> [Double] {
-        zip(frequencies, levels).map { f, l in (-l * weight(f)).clamped(to: maxCut...maxBoost) }
+        zip(frequencies, levels).map { f, l in (-l * weight(f)).clamped(to: maxCut...boostLimit(f)) }
     }
 
     /// Correction sous forme de filtres en cloche (8 au plus), ajustés un par un sur le plus grand écart restant.
@@ -139,15 +150,20 @@ enum SpeakerAnalysis {
         }
         for _ in 0..<maxFilters {
             let r = residual()
-            let candidates = frequencies.indices.filter { weight(frequencies[$0]) > 0.5 }
+            // Un seul filtre par tiers d'octave : pas de filtres empilés qui se contredisent.
+            let candidates = frequencies.indices.filter { i in
+                weight(frequencies[i]) > 0.5
+                    && filters.allSatisfy { abs(log2($0.frequency / frequencies[i])) >= 1.0 / 3 }
+            }
             guard let i = candidates.max(by: { abs(r[$0]) < abs(r[$1]) }), abs(r[i]) >= 1 else { break }
             // Largeur : là où l'écart retombe à la moitié, de part et d'autre.
             var a = i, b = i
             while a > 0, abs(r[a - 1]) > abs(r[i]) / 2, r[a - 1].sign == r[i].sign { a -= 1 }
             while b < r.count - 1, abs(r[b + 1]) > abs(r[i]) / 2, r[b + 1].sign == r[i].sign { b += 1 }
             let octaves = max(log2(frequencies[b] / frequencies[a]), 1.0 / 6)
-            let q = (pow(2, octaves).squareRoot() / (pow(2, octaves) - 1)).clamped(to: 0.7...4)
-            let gain = (r[i] * 0.9).clamped(to: maxCut...maxBoost)
+            let q = (pow(2, octaves).squareRoot() / (pow(2, octaves) - 1)).clamped(to: 0.7...maxQ)
+            let gain = (r[i] * 0.9).clamped(to: maxCut...boostLimit(frequencies[i]))
+            guard abs(gain) >= 1 else { break }
             filters.append(EQFilter(kind: .peak, frequency: frequencies[i], gain: gain, q: q))
         }
         filters.sort { $0.frequency < $1.frequency }

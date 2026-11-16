@@ -49,6 +49,8 @@ struct HeadphoneProfile: Codable, Equatable {
     var name: String
     var preamp: Double
     var filters: [EQFilter]
+    /// Réponse mesurée (dB, aux points de SpeakerAnalysis.frequencies) : profils issus d'une mesure au micro.
+    var measured: [Double]? = nil
 }
 
 /// Réglage particulier d'une application. `preset == nil` : son non égalisé.

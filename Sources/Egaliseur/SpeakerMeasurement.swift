@@ -163,6 +163,7 @@ final class SpeakerMeasurement: ObservableObject {
             var correction = fit
             let date = Date().formatted(date: .abbreviated, time: .omitted)
             correction.name = String(localized: "Mesure \(outputName) · \(date)")
+            correction.measured = response.levels
             state = .done(levels: response.levels, snr: response.snr, correction: correction)
         }
     }

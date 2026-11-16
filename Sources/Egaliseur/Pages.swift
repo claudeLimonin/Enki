@@ -28,7 +28,8 @@ struct HeadphonesPage: View {
                         }
                     }
                     .font(.caption)
-                    CorrectionCurveView(filters: model.correction?.filters ?? [], sampleRate: model.sampleRate)
+                    CorrectionCurveView(filters: model.correction?.filters ?? [], sampleRate: model.sampleRate,
+                                        measured: model.correctionEnabled ? model.correction?.measured : nil)
                         .frame(minHeight: 240, maxHeight: .infinity)
                 }
             }
@@ -99,7 +100,7 @@ struct HeadphonesPage: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
             Divider().padding(.leading, 14)
             HStack {
-                Text("Corriger le rendu du casque")
+                Text(model.outputIsSpeakers ? "Corriger le rendu des haut-parleurs" : "Corriger le rendu du casque")
                 Spacer()
                 Toggle("Corriger le rendu du casque", isOn: $model.correctionEnabled)
                     .toggleStyle(.switch).labelsHidden()
@@ -239,7 +240,7 @@ struct HeadphonesPage: View {
     }
 
     @ViewBuilder private var legends: some View {
-        legend(.orange, dashed: false, "Rendu du casque")
+        legend(.orange, dashed: false, model.correction?.measured != nil ? "Rendu mesuré" : "Rendu du casque")
         legend(.purple, dashed: true, "Correction")
         legend(.primary, dashed: false, "Résultat")
     }
@@ -253,10 +254,13 @@ struct HeadphonesPage: View {
     }
 }
 
-/// Rendu estimé du casque (inverse de la correction), correction, et résultat après correction (neutre).
+/// Rendu du casque ou des haut-parleurs, correction, et résultat après correction.
+/// Profil AutoEQ : rendu estimé (inverse de la correction), résultat neutre.
+/// Profil mesuré au micro : rendu réellement mesuré, résultat = mesure + correction.
 struct CorrectionCurveView: View {
     let filters: [EQFilter]
     let sampleRate: Double
+    var measured: [Double]? = nil
 
     var body: some View {
         Canvas { ctx, size in
@@ -267,6 +271,8 @@ struct CorrectionCurveView: View {
             for db in [-10.0, 10] {
                 var l = Path(); l.move(to: CGPoint(x: 0, y: y(db))); l.addLine(to: CGPoint(x: w, y: y(db)))
                 ctx.stroke(l, with: grid)
+                ctx.draw(Text(db > 0 ? "+10 dB" : "−10 dB").font(.caption2).foregroundStyle(.secondary),
+                         at: CGPoint(x: w - 4, y: y(db) - 2), anchor: .bottomTrailing)
             }
             for f in [100.0, 1000, 10000] {
                 var l = Path(); l.move(to: CGPoint(x: x(f), y: 0)); l.addLine(to: CGPoint(x: x(f), y: h))
@@ -274,30 +280,39 @@ struct CorrectionCurveView: View {
             }
             var zero = Path(); zero.move(to: CGPoint(x: 0, y: h / 2)); zero.addLine(to: CGPoint(x: w, y: h / 2))
             ctx.stroke(zero, with: .color(.secondary.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-            for (f, label) in [(20.0, "20 Hz"), (100, "100"), (1000, "1 k"), (10000, "10 k"), (20000, "20 kHz")] {
-                let anchor: UnitPoint = f == 20 ? .bottomLeading : (f == 20000 ? .bottomTrailing : .bottom)
-                let px = f == 20 ? 8 : (f == 20000 ? w - 8 : x(f))
-                // Graphique étroit : « 10 k » chevaucherait « 20 kHz ».
-                if f == 10000, px > w - 80 { continue }
-                ctx.draw(Text(label).font(.caption2).foregroundStyle(.secondary), at: CGPoint(x: px, y: size.height - 2), anchor: anchor)
+            for (f, label) in [(20.0, "20 Hz"), (100, "100 Hz"), (1000, "1 kHz"), (10000, "10 kHz")] {
+                ctx.draw(Text(label).font(.caption2).foregroundStyle(.secondary),
+                         at: CGPoint(x: f == 20 ? 4 : x(f), y: size.height - 2), anchor: f == 20 ? .bottomLeading : .bottom)
             }
-            // Résultat : rendu du casque + correction ≈ neutre.
-            ctx.stroke(zero, with: .color(.primary), lineWidth: 2.4)
-            guard !filters.isEmpty else { return }
-            var corr = Path(), phones = Path()
-            for i in 0...160 {
-                let f = 20 * pow(1000, Double(i) / 160)
-                let db = EQMath.responseDB(filters, at: f, sampleRate: sampleRate)
-                let a = CGPoint(x: x(f), y: y(db)), b = CGPoint(x: x(f), y: y(-db))
-                if i == 0 { corr.move(to: a); phones.move(to: b) } else { corr.addLine(to: a); phones.addLine(to: b) }
+            guard !filters.isEmpty else {
+                ctx.stroke(zero, with: .color(.primary), lineWidth: 2.4)
+                return
             }
-            ctx.stroke(phones, with: .color(.orange), lineWidth: 2.2)
-            ctx.stroke(corr, with: .color(.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+            let corr: (Double) -> Double = { EQMath.responseDB(filters, at: $0, sampleRate: sampleRate) }
+            func path(_ points: [(Double, Double)]) -> Path {
+                var p = Path()
+                for (i, pt) in points.enumerated() {
+                    let c = CGPoint(x: x(pt.0), y: y(pt.1))
+                    i == 0 ? p.move(to: c) : p.addLine(to: c)
+                }
+                return p
+            }
+            let grid160 = (0...160).map { 20 * pow(1000, Double($0) / 160) }
+            if let measured, measured.count == SpeakerAnalysis.frequencies.count {
+                let fs = SpeakerAnalysis.frequencies
+                ctx.stroke(path(zip(fs, measured).map { ($0, $1) }), with: .color(.orange), lineWidth: 2.2)
+                ctx.stroke(path(grid160.map { ($0, corr($0)) }), with: .color(.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                ctx.stroke(path(zip(fs, measured).map { ($0, $1 + corr($0)) }), with: .color(.primary), lineWidth: 2.4)
+            } else {
+                ctx.stroke(zero, with: .color(.primary), lineWidth: 2.4)
+                ctx.stroke(path(grid160.map { ($0, -corr($0)) }), with: .color(.orange), lineWidth: 2.2)
+                ctx.stroke(path(grid160.map { ($0, corr($0)) }), with: .color(.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+            }
         }
         .padding(8)
         .background(.quinary, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
-        .accessibilityLabel(Text("Rendu du casque, correction et résultat"))
+        .accessibilityLabel(Text("Rendu, correction et résultat"))
     }
 }
 
