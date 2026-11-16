@@ -479,3 +479,13 @@
 "Correction de casque" = "Headphone correction";
 "Choisir ce qu'affiche le graphique" = "Choose what the graph shows";
 "Rechercher une application" = "Search for an app";
+"La balance déplace le son vers la gauche ou la droite : utile si une oreille entend moins bien, ou si vous n'êtes pas au centre des haut-parleurs." = "Balance moves the sound to the left or right: useful if one ear hears less well, or if you are not centered between the speakers.";
+"Mono (même son des deux côtés)" = "Mono (same sound on both sides)";
+"Centrée" = "Centered";
+"Plus à gauche : %lld %%" = "More to the left: %lld%%";
+"Plus à droite : %lld %%" = "More to the right: %lld%%";
+"Balance gauche / droite" = "Left / right balance";
+"Recentrer" = "Recenter";
+"Gauche" = "Left";
+"Centre" = "Center";
+"Droite" = "Right";

@@ -370,53 +370,118 @@ struct AppsPage: View {
 struct ListeningPage: View {
     @EnvironmentObject var model: EQModel
 
+    /// Une colonne en fenêtre normale, deux sur grand écran.
+    private let columns = [GridItem(.adaptive(minimum: 380), spacing: 16, alignment: .top)]
+
     var body: some View {
-        Form {
-            Section {
-                Picker("Niveau", selection: $model.leveler) {
-                    ForEach(0..<OutputOptions.levelerNames.count, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                ListeningCard(title: "Mode nuit",
+                              footer: "Abaisse les graves trop forts (explosions) et remonte les dialogues calmes, pour écouter à faible volume. Raccourci : ⌃⌥⌘N.") {
+                    Picker("Niveau", selection: $model.leveler) {
+                        ForEach(0..<OutputOptions.levelerNames.count, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
-                .pickerStyle(.segmented)
-            } header: {
-                Text("Mode nuit")
-            } footer: {
-                Text("Abaisse les graves trop forts (explosions) et remonte les dialogues calmes, pour écouter à faible volume. Raccourci : ⌃⌥⌘N.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section {
-                Toggle("Spatialisation casque", isOn: $model.crossfeed)
-            } header: {
-                Text("Casque")
-            } footer: {
-                Text("Mélange légèrement les canaux gauche et droit, pour un son moins fatigant, plus proche d'enceintes.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Sortie") {
-                Toggle("Mono", isOn: $model.mono)
-                LabeledContent("Balance") {
-                    HStack(spacing: 8) {
-                        Text("G").foregroundStyle(.secondary)
-                        Slider(value: $model.balance, in: -1...1, step: 0.05).frame(width: 220)
-                        Text("D").foregroundStyle(.secondary)
-                        Button("Centrer") { model.balance = 0 }.disabled(model.balance == 0)
+                ListeningCard(title: "Casque",
+                              footer: "Mélange légèrement les canaux gauche et droit, pour un son moins fatigant, plus proche d'enceintes.") {
+                    toggleRow("Spatialisation casque", isOn: $model.crossfeed)
+                }
+                ListeningCard(title: "Sortie",
+                              footer: "La balance déplace le son vers la gauche ou la droite : utile si une oreille entend moins bien, ou si vous n'êtes pas au centre des haut-parleurs.") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        toggleRow("Mono (même son des deux côtés)", isOn: $model.mono)
+                        Divider()
+                        BalanceControl(balance: $model.balance)
+                    }
+                }
+                ListeningCard(title: "Protection",
+                              footer: "Baisse le volume un court instant pour éviter la saturation. Avec le mode nuit, il agit rarement : c'est normal.") {
+                    toggleRow("Limiteur anti-saturation", isOn: $model.limiterEnabled)
+                }
+                ListeningCard(title: "Audition", footer: nil) {
+                    HStack {
+                        Text("Test auditif")
+                        Spacer()
+                        Button("Faire le test…") { HearingTestWindow.show(model: model) }
                     }
                 }
             }
-            Section {
-                Toggle("Limiteur anti-saturation", isOn: $model.limiterEnabled)
-            } header: {
-                Text("Protection")
-            } footer: {
-                Text("Baisse le volume un court instant pour éviter la saturation. Avec le mode nuit, il agit rarement : c'est normal.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Audition") {
-                LabeledContent("Test auditif") {
-                    Button("Faire le test…") { HearingTestWindow.show(model: model) }
-                }
+            .padding(20)
+        }
+        .navigationTitle("Écoute")
+    }
+
+    /// Libellé à gauche, interrupteur à droite.
+    private func toggleRow(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Toggle(title, isOn: isOn).toggleStyle(.switch).labelsHidden()
+        }
+    }
+}
+
+/// Bloc de la page Écoute : titre, contenu encadré, explication.
+struct ListeningCard<Content: View>: View {
+    let title: LocalizedStringKey
+    let footer: LocalizedStringKey?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).fontWeight(.semibold)
+            content
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+            if let footer {
+                Text(footer).font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .formStyle(.grouped)
-        .navigationTitle("Écoute")
+    }
+}
+
+/// Balance gauche / droite, avec sa valeur en clair et des repères sous le curseur.
+struct BalanceControl: View {
+    @Binding var balance: Double
+
+    private var valueText: String {
+        let percent = Int((abs(balance) * 100).rounded())
+        if percent == 0 { return String(localized: "Centrée") }
+        return balance < 0
+            ? String(localized: "Plus à gauche : \(percent) %")
+            : String(localized: "Plus à droite : \(percent) %")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Balance gauche / droite")
+                Spacer()
+                Text(valueText).monospacedDigit().foregroundStyle(balance == 0 ? .secondary : .primary)
+                Button("Recentrer") { balance = 0 }
+                    .disabled(balance == 0)
+                    .controlSize(.small)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "l.circle").foregroundStyle(.secondary).accessibilityHidden(true)
+                VStack(spacing: 2) {
+                    Slider(value: $balance, in: -1...1, step: 0.05)
+                        .accessibilityLabel("Balance gauche / droite")
+                        .accessibilityValue(valueText)
+                    HStack {
+                        Text("Gauche"); Spacer(); Text("Centre"); Spacer(); Text("Droite")
+                    }
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                }
+                Image(systemName: "r.circle").foregroundStyle(.secondary).accessibilityHidden(true)
+            }
+        }
     }
 }
