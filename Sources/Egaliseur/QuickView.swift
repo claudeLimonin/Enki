@@ -19,6 +19,7 @@ struct QuickView: View {
             header.tourAnchor(.power)
             outputCard.tourAnchor(.output)
             presetRow.tourAnchor(.preset)
+            ActiveEffectsBar()
             graph.tourAnchor(.graph)
             tiles.tourAnchor(.tiles)
             Divider()

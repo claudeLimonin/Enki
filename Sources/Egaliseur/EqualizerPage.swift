@@ -310,6 +310,8 @@ struct EqualizerPage: View {
                 }
             }
 
+            if targetApp == nil { ActiveEffectsBar(hideEqualizer: true) }
+
             SpectrumPanel(selectedBand: $selectedBand, showing: targetSettings)
                 .frame(minHeight: 170, maxHeight: .infinity)
                 .overlay(alignment: .bottomLeading) { displayMenu.padding(8) }

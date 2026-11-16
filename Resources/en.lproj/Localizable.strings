@@ -622,3 +622,12 @@
 "La correction est mémorisée pour « %@ » et se règle ensuite dans la page Sortie audio, où cette mesure est aussi gardée dans l'historique." = "The correction is remembered for “%@” and is then managed in the Audio Output page, where this measurement is also kept in the history.";
 "La fenêtre Enki Audio (⌃⌥⌘O) donne accès à l'égaliseur complet, au mode paramétrique, à la correction de la sortie audio (casque ou haut-parleurs) et au réglage par application. Les Réglages (⌘,) gardent les options et ce guide." = "The Enki Audio window (⌃⌥⌘O) gives access to the full equalizer, parametric mode, output correction (headphones or speakers) and per-app settings. Settings (⌘,) holds the options and this guide.";
 "Casque, haut-parleurs… chaque sortie garde son propre réglage. Cliquez ici pour la corriger : profil mesuré de votre casque (plus de 8 000) ou mesure de vos haut-parleurs avec l'iPhone." = "Headphones, speakers… each output keeps its own settings. Click here to correct it: a measured profile for your headphones (over 8,000) or a measurement of your speakers with the iPhone.";
+"Égaliseur : %@" = "Equalizer: %@";
+"Correction : %@" = "Correction: %@";
+"%@ : %@" = "%@: %@";
+"Mode nuit : %@" = "Night mode: %@";
+"Largeur : %lld %%" = "Width: %lld%%";
+"Balance décentrée" = "Balance off-center";
+"Limiteur (crêtes au-dessus de −1 dB)" = "Limiter (peaks above −1 dB)";
+"Agit aussi sur le son :" = "Also affecting the sound:";
+"Couper : %@" = "Turn off: %@";
