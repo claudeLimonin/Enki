@@ -1,3 +1,5 @@
+<p align="center"><img src="Resources/AppIcon-preview.png" width="160" alt="Icône Enki Audio"></p>
+
 # Égaliseur
 
 Égaliseur graphique et paramétrique pour **tout le son du Mac** (musique, vidéos, jeux, visioconférences), dans la barre des menus. Aucun pilote à installer : l'app utilise la capture audio intégrée à macOS.
