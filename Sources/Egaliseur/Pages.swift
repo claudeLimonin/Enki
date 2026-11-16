@@ -14,12 +14,17 @@ struct HeadphonesPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 outputCard
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 16) {
-                        Text("Avant / après").fontWeight(.semibold)
-                        Spacer()
-                        legend(.orange, dashed: false, "Rendu du casque")
-                        legend(.purple, dashed: true, "Correction")
-                        legend(.primary, dashed: false, "Résultat")
+                    // Légende à droite du titre, ou dessous si la colonne est étroite.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 16) {
+                            Text("Avant / après").fontWeight(.semibold).fixedSize()
+                            Spacer()
+                            legends
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Avant / après").fontWeight(.semibold)
+                            HStack(spacing: 12) { legends }
+                        }
                     }
                     .font(.caption)
                     CorrectionCurveView(filters: model.correction?.filters ?? [], sampleRate: model.sampleRate)
@@ -69,13 +74,6 @@ struct HeadphonesPage: View {
         }
         .padding(20)
         .navigationTitle("Casque")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Toggle("Égaliseur", isOn: $model.enabled)
-                    .toggleStyle(.switch)
-                    .help(model.enabled ? "Couper l'égaliseur" : "Activer l'égaliseur")
-            }
-        }
         .onAppear {
             search.prepare()
             // Sans correction : on invite directement à chercher.
@@ -219,11 +217,17 @@ struct HeadphonesPage: View {
         .disabled(search.downloading != nil)
     }
 
+    @ViewBuilder private var legends: some View {
+        legend(.orange, dashed: false, "Rendu du casque")
+        legend(.purple, dashed: true, "Correction")
+        legend(.primary, dashed: false, "Résultat")
+    }
+
     private func legend(_ color: Color, dashed: Bool, _ text: LocalizedStringKey) -> some View {
         HStack(spacing: 6) {
             Rectangle().fill(.clear).frame(width: 14, height: 2)
                 .overlay(Rectangle().stroke(color, style: StrokeStyle(lineWidth: 2, dash: dashed ? [4, 3] : [])))
-            Text(text)
+            Text(text).fixedSize()
         }
     }
 }
@@ -252,6 +256,8 @@ struct CorrectionCurveView: View {
             for (f, label) in [(20.0, "20 Hz"), (100, "100"), (1000, "1 k"), (10000, "10 k"), (20000, "20 kHz")] {
                 let anchor: UnitPoint = f == 20 ? .bottomLeading : (f == 20000 ? .bottomTrailing : .bottom)
                 let px = f == 20 ? 8 : (f == 20000 ? w - 8 : x(f))
+                // Graphique étroit : « 10 k » chevaucherait « 20 kHz ».
+                if f == 10000, px > w - 80 { continue }
                 ctx.draw(Text(label).font(.caption2).foregroundStyle(.secondary), at: CGPoint(x: px, y: size.height - 2), anchor: anchor)
             }
             // Résultat : rendu du casque + correction ≈ neutre.
@@ -290,6 +296,19 @@ struct AppsPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Rechercher une application", text: $filter).textFieldStyle(.plain)
+                if !filter.isEmpty {
+                    Button { filter = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.plain).foregroundStyle(.secondary)
+                        .accessibilityLabel("Effacer la recherche")
+                }
+            }
+            .padding(.horizontal, 8).padding(.vertical, 5)
+            .frame(maxWidth: 280)
+            .background(.background, in: RoundedRectangle(cornerRadius: 7))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.separator))
             Table(items) {
                 TableColumn("Application") { app in
                     HStack(spacing: 8) {
@@ -327,8 +346,6 @@ struct AppsPage: View {
         }
         .padding(20)
         .navigationTitle("Applications")
-        .navigationSubtitle(Text("\(model.appRules.count) sur 7 réglées à part"))
-        .searchable(text: $filter, placement: .toolbar, prompt: Text("Rechercher"))
         .onAppear { model.refreshApps() }
         .onReceive(refresh) { _ in model.refreshApps() }
         .alert("7 applications au maximum", isPresented: $limitReached) {
@@ -401,13 +418,5 @@ struct ListeningPage: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Écoute")
-        .toolbar {
-            // Même barre d'outils que les autres pages : la fenêtre ne change pas d'aspect.
-            ToolbarItem(placement: .primaryAction) {
-                Toggle("Égaliseur", isOn: $model.enabled)
-                    .toggleStyle(.switch)
-                    .help(model.enabled ? "Couper l'égaliseur" : "Activer l'égaliseur")
-            }
-        }
     }
 }

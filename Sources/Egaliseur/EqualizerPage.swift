@@ -114,7 +114,7 @@ struct PresetTypePicker: View {
 
     var body: some View {
         TypeAndChoicePicker(
-            groups: model.presetChoiceGroups { p in p.name == model.selectedPreset ? model.presetTitle : p.displayName },
+            groups: model.presetChoiceGroups(title: { p in p.name == model.selectedPreset ? model.presetTitle : p.displayName }),
             current: model.selectedPreset,
             placeholder: model.selectedPreset == nil ? EQModel.customDisplayName : String(localized: "Choisir…"),
             onSelect: { name in if let p = model.preset(named: name) { model.apply(p) } },
@@ -151,7 +151,7 @@ struct PresetControls: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            PresetTypePicker()
+            PresetTypePicker(typeWidth: EqualizerPage.typeWidth, presetWidth: EqualizerPage.choiceWidth, showLabels: false)
             Menu {
                 if let name = model.selectedPreset, model.isModified, let p = model.preset(named: name) {
                     Button("Revenir à « \(p.displayName) »") { model.apply(p) }
@@ -187,6 +187,7 @@ struct PresetControls: View {
 /// Interrupteur du limiteur, avec son état : orange quand il agit (ou quand le son sature sans lui).
 struct LimiterControl: View {
     @EnvironmentObject var model: EQModel
+    var showLabel = true
     @StateObject private var meter = LimiterMeter()
 
     private var state: (text: String, alert: Bool) {
@@ -200,6 +201,7 @@ struct LimiterControl: View {
         HStack(spacing: 8) {
             Toggle("Limiteur", isOn: $model.limiterEnabled)
                 .toggleStyle(.switch)
+                .labelsHidden(!showLabel)
                 .controlSize(.small)
             Text(state.text)
                 .font(.caption.weight(state.alert ? .semibold : .regular))
@@ -223,6 +225,47 @@ struct EqualizerPage: View {
     @State private var target: String?
     @State private var limitReached = false
 
+    static let typeWidth: CGFloat = 170
+    static let choiceWidth: CGFloat = 200
+
+    private func rowLabel(_ text: LocalizedStringKey) -> some View {
+        Text(text).gridColumnAlignment(.leading)
+    }
+
+    @ViewBuilder private var settingControls: some View {
+        if let app = targetApp {
+            appSettingPicker(app)
+        } else {
+            PresetControls(nameRequest: $nameRequest)
+        }
+    }
+
+    private var nightPicker: some View {
+        Picker("Mode nuit", selection: $model.leveler) {
+            ForEach(OutputOptions.levelerNames.indices, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+        }
+        .labelsHidden()
+        .frame(width: Self.typeWidth)
+        .help("Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume. S'applique à toutes les applications.")
+    }
+
+    /// Ce que montre le graphique : dans un coin du graphique, puisqu'il ne concerne que lui.
+    private var displayMenu: some View {
+        Menu {
+            Toggle("Spectre en direct", isOn: $model.showSpectrum)
+            Toggle("Correction de casque", isOn: $model.showCorrectionLayer)
+                .disabled(model.correction == nil)
+        } label: {
+            Label("Afficher", systemImage: "eye")
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .font(.caption)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(.regularMaterial, in: Capsule())
+        .help("Choisir ce qu'affiche le graphique")
+    }
+
     private var targetApp: AudioApp? { target.flatMap { id in model.appPageItems.first { $0.bundleID == id } } }
 
     /// Réglage effectivement utilisé par l'application ciblée (pour le graphique).
@@ -237,43 +280,39 @@ struct EqualizerPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 20) {
-                targetPicker
-                Spacer()
+            HStack(alignment: .top, spacing: 0) {
+                // Deux colonnes si la place le permet (réglage | écoute), sinon empilées.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 36) {
+                        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
+                            GridRow { rowLabel("Appliquer à"); targetPicker }
+                            GridRow { rowLabel(targetApp == nil ? "Préréglage" : "Réglage"); settingControls }
+                        }
+                        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
+                            GridRow { rowLabel("Mode nuit"); nightPicker }
+                            GridRow { rowLabel("Limiteur"); LimiterControl(showLabel: false) }
+                        }
+                    }
+                    Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
+                        GridRow { rowLabel("Appliquer à"); targetPicker }
+                        GridRow { rowLabel(targetApp == nil ? "Préréglage" : "Réglage"); settingControls }
+                        GridRow {
+                            rowLabel("Mode nuit")
+                            HStack(spacing: 20) { nightPicker; LimiterControl() }
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
                 if model.comparing {
                     Label("Son d'origine", systemImage: "speaker.wave.2")
                         .foregroundStyle(.orange)
                         .font(.callout.weight(.semibold))
                 }
             }
-            HStack(spacing: 20) {
-                if let app = targetApp {
-                    appSettingPicker(app)
-                } else {
-                    PresetControls(nameRequest: $nameRequest)
-                }
-                Spacer()
-            }
-            HStack(spacing: 20) {
-                Picker("Mode nuit", selection: $model.leveler) {
-                    ForEach(OutputOptions.levelerNames.indices, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
-                }
-                .frame(width: 190)
-                .help("Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume. S'applique à toutes les applications.")
-                LimiterControl()
-                Spacer()
-                Toggle("Correction casque", isOn: $model.showCorrectionLayer)
-                    .disabled(model.correction == nil)
-                    .help("Afficher la correction de casque sur le graphique")
-                Toggle("Spectre", isOn: $model.showSpectrum)
-                    .help("Afficher le spectre en direct sur le graphique")
-            }
-            .toggleStyle(.checkbox)
-
-            if targetApp == nil { SeparateAppsNote() }
 
             SpectrumPanel(selectedBand: $selectedBand, showing: targetSettings)
-                .frame(minHeight: 240, maxHeight: 520)
+                .frame(minHeight: 170, maxHeight: 520)
+                .overlay(alignment: .bottomLeading) { displayMenu.padding(8) }
 
             if let app = targetApp {
                 appExplanation(app)
@@ -295,21 +334,6 @@ struct EqualizerPage: View {
         }
         .padding(20)
         .navigationTitle("Égaliseur")
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Picker("Mode", selection: $model.mode) {
-                    ForEach(EQMode.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .help("Graphique : 10 bandes fixes. Paramétrique : bandes libres (fréquence, gain, largeur).")
-                Toggle(isOn: $model.comparing) { Text("Comparer") }
-                    .toggleStyle(.button)
-                    .help("Écouter le son d'origine, sans aucun traitement, pour comparer.")
-                Toggle("Égaliseur", isOn: $model.enabled)
-                    .toggleStyle(.switch)
-                    .help(model.enabled ? "Couper l'égaliseur" : "Activer l'égaliseur")
-            }
-        }
         .sheet(item: $nameRequest) { PresetNameSheet(request: $0) }
         .onChange(of: model.mode) { _, _ in selectedBand = nil }
         .onAppear { model.refreshApps() }
@@ -328,7 +352,8 @@ struct EqualizerPage: View {
                 }
             }
         }
-        .frame(width: 290)
+        .labelsHidden()
+        .frame(width: Self.typeWidth + 8 + Self.choiceWidth)
         .help("Choisissez à quelles applications s'applique le réglage")
     }
 
@@ -354,7 +379,8 @@ struct EqualizerPage: View {
                 let choice: AppChoice = tag == main ? .main : (tag == bypass ? .bypass : .preset(tag))
                 if !model.setChoice(choice, for: app) { limitReached = true }
             },
-            choiceLabel: "Réglage")
+            typeWidth: Self.typeWidth, choiceWidth: Self.choiceWidth,
+            choiceLabel: "Réglage", showLabels: false)
         .id(app.bundleID)  // type remis à zéro quand on change d'application
     }
 

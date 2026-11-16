@@ -49,7 +49,10 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let w = NSWindow(contentViewController: host)
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.toolbarStyle = .unified
-            w.contentMinSize = NSSize(width: 860, height: 560)
+            // Titre et commandes sont en tête de page ; la barre de titre ne garde que les boutons de fenêtre.
+            w.titleVisibility = .hidden
+            w.titlebarAppearsTransparent = true
+            w.contentMinSize = NSSize(width: 860, height: 600)
             w.setContentSize(NSSize(width: 1040, height: 700))
             w.isReleasedWhenClosed = false
             w.delegate = self
@@ -94,7 +97,9 @@ struct MainView: View {
             .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 260)
             .safeAreaInset(edge: .bottom) { outputSummary }
         } detail: {
-            Group {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                Group {
                 switch nav.section {
                 case .equalizer: EqualizerPage()
                 case .headphones: HeadphonesPage()
@@ -102,9 +107,43 @@ struct MainView: View {
                 case .listening: ListeningPage()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
         }
-        .frame(minWidth: 860, maxWidth: .infinity, minHeight: 560, maxHeight: .infinity)
+        .frame(minWidth: 860, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity)
+        // Le titre est affiché en tête de page, aligné sur le contenu (voir header).
+        .modifier(HideToolbarTitle())
+    }
+
+    /// Titre de la page, aligné sur le contenu (marge de 20 points comme les pages).
+    private var header: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(nav.section.title).font(.title2.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+            if nav.section == .apps {
+                Text("\(model.appRules.count) sur 7 réglées à part").foregroundStyle(.secondary)
+            }
+            Spacer()
+            if nav.section == .equalizer {
+                Picker("Mode", selection: $model.mode) {
+                    ForEach(EQMode.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .help("Graphique : 10 bandes fixes. Paramétrique : bandes libres (fréquence, gain, largeur).")
+                Toggle(isOn: $model.comparing) { Text("Comparer") }
+                    .toggleStyle(.button)
+                    .help("Écouter le son d'origine, sans aucun traitement, pour comparer.")
+            }
+            Toggle("Égaliseur", isOn: $model.enabled)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .help(model.enabled ? "Couper l'égaliseur" : "Activer l'égaliseur")
+                .accessibilityLabel("Égaliseur")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 14)
     }
 
     /// Sortie actuelle, rappelée en bas de la barre latérale : c'est elle qui décide du réglage chargé.
@@ -118,5 +157,16 @@ struct MainView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
+    }
+}
+
+/// Retire le titre de la barre d'outils (macOS 15 et plus) : il est déjà en tête de page.
+private struct HideToolbarTitle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15, *) {
+            content.toolbar(removing: .title)
+        } else {
+            content
+        }
     }
 }
