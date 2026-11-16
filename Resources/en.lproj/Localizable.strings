@@ -588,3 +588,14 @@
 "Rendu mesuré" = "Measured response";
 "Corriger le rendu des haut-parleurs" = "Correct the speaker response";
 "Rendu, correction et résultat" = "Response, correction and result";
+"Historique des mesures" = "Measurement history";
+"Aucune mesure pour cette sortie. Chaque mesure réalisée sera gardée ici, appliquée ou non." = "No measurement for this output yet. Every measurement will be kept here, applied or not.";
+"Appliquer cette mesure" = "Apply This Measurement";
+"Supprimer la mesure du %@ ?" = "Delete the measurement from %@?";
+"La correction en cours n'est pas modifiée." = "The current correction is not changed.";
+"Qualité %lld dB · %lld filtres" = "Quality %lld dB · %lld filters";
+"Appliquée" = "Applied";
+"Correction en cours" = "Current correction";
+"Supprimer cette mesure" = "Delete this measurement";
+"La correction est mémorisée pour « %@ » et se règle ensuite comme une correction de casque. Cette mesure est aussi gardée dans l'historique de la page Casque." = "The correction is remembered for “%@” and is then managed like a headphone correction. This measurement is also kept in the Headphones page history.";
+"%lld filtres" = "%lld filters";

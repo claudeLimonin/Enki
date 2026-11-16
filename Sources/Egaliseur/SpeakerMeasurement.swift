@@ -207,6 +207,10 @@ struct MeasurementSheet: View {
         .frame(width: 520)
         .onAppear { measure.refreshDevices() }
         .onDisappear { measure.cancel() }
+        // Chaque mesure réussie rejoint l'historique, qu'elle soit appliquée ou non.
+        .onChange(of: measure.state) { _, state in
+            if case .done(_, let snr, let correction) = state { model.addMeasurement(correction, snr: snr) }
+        }
     }
 
     @ViewBuilder private var buttons: some View {
@@ -280,7 +284,7 @@ struct MeasurementSheet: View {
             Text("\(correction.filters.count) filtres, prudents : les pics sont baissés, les creux à peine remontés. Qualité de la mesure : \(Int(snr)) dB au-dessus du bruit.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("La correction est mémorisée pour « \(outputName) » et se règle ensuite comme une correction de casque.")
+            Text("La correction est mémorisée pour « \(outputName) » et se règle ensuite comme une correction de casque. Cette mesure est aussi gardée dans l'historique de la page Casque.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         case .failed(let message):

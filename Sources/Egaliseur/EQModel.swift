@@ -317,6 +317,31 @@ final class EQModel: ObservableObject {
     // MARK: Applications
 
     @Published private(set) var appRules: [AppRule]
+    /// Historique des mesures de haut-parleurs (toutes sorties), du plus récent au plus ancien.
+    @Published private(set) var measurements: [MeasurementRecord]
+    static let maxMeasurementsPerOutput = 20
+
+    /// Mesures de la sortie actuelle.
+    var currentMeasurements: [MeasurementRecord] {
+        guard let uid = currentDevice?.uid else { return [] }
+        return measurements.filter { $0.outputUID == uid }
+    }
+
+    /// Mémorise une mesure de la sortie actuelle (les plus anciennes au-delà de 20 sont oubliées).
+    func addMeasurement(_ profile: HeadphoneProfile, snr: Double) {
+        guard let device = currentDevice else { return }
+        measurements.insert(MeasurementRecord(date: Date(), outputUID: device.uid, outputName: device.name, snr: snr, profile: profile), at: 0)
+        let mine = measurements.filter { $0.outputUID == device.uid }
+        if mine.count > Self.maxMeasurementsPerOutput, let oldest = mine.last {
+            measurements.removeAll { $0.id == oldest.id }
+        }
+        save()
+    }
+
+    func deleteMeasurement(_ id: UUID) {
+        measurements.removeAll { $0.id == id }
+        save()
+    }
     /// Applications qui produisent ou ont produit du son (pour le menu).
     @Published private(set) var audioApps: [AudioApp] = []
     /// Applications captées à part par le moteur en ce moment (ordre des sources).
@@ -384,10 +409,21 @@ final class EQModel: ObservableObject {
         showSpectrum = defaults.object(forKey: "showSpectrum") as? Bool ?? true
         showCorrectionLayer = defaults.object(forKey: "showCorrectionLayer") as? Bool ?? true
         showNightLayer = defaults.object(forKey: "showNightLayer") as? Bool ?? true
-        deviceSettings = decode("deviceSettings", [String: DeviceSetting].self) ?? [:]
+        let savedDevices = decode("deviceSettings", [String: DeviceSetting].self) ?? [:]
+        deviceSettings = savedDevices
         correction = decode("correction", HeadphoneProfile.self)
         correctionEnabled = defaults.object(forKey: "correctionOn") as? Bool ?? true
         appRules = decode("appRules", [AppRule].self) ?? []
+        var history = decode("measurements", [MeasurementRecord].self) ?? []
+        if defaults.object(forKey: "measurements") == nil {
+            // Reprise : les mesures appliquées avant l'historique y entrent (qualité inconnue).
+            for (uid, setting) in savedDevices {
+                if let c = setting.correction, c.measured != nil {
+                    history.append(MeasurementRecord(date: Date(), outputUID: uid, outputName: setting.name, snr: 0, profile: c))
+                }
+            }
+        }
+        measurements = history
         // Ancienne version : « Personnalisé » était enregistré comme nom de préréglage.
         let name = defaults.string(forKey: "preset") ?? Self.presets[0].name
         let known = Self.presets.contains { $0.name == name } || userPresets.contains { $0.name == name }
@@ -851,6 +887,7 @@ final class EQModel: ObservableObject {
         encode(correction, "correction")
         defaults.set(correctionEnabled, forKey: "correctionOn")
         encode(appRules, "appRules")
+        encode(measurements, "measurements")
         if let device = currentDevice {
             // Toujours tenu à jour, même option coupée : la réactiver repart d'un état juste.
             deviceSettings[device.uid] = DeviceSetting(

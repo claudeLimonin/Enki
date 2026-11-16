@@ -53,6 +53,19 @@ struct HeadphoneProfile: Codable, Equatable {
     var measured: [Double]? = nil
 }
 
+/// Mesure de haut-parleurs mémorisée (historique), appliquée ou non.
+struct MeasurementRecord: Codable, Equatable, Identifiable {
+    var id = UUID()
+    var date: Date
+    /// Sortie mesurée (identifiant Core Audio) et son nom au moment de la mesure.
+    var outputUID: String
+    var outputName: String
+    /// Rapport signal/bruit (dB) : qualité de la mesure.
+    var snr: Double
+    /// Correction calculée ; `measured` contient la réponse mesurée.
+    var profile: HeadphoneProfile
+}
+
 /// Réglage particulier d'une application. `preset == nil` : son non égalisé.
 struct AppRule: Codable, Equatable, Identifiable {
     var bundleID: String

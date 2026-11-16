@@ -71,6 +71,9 @@ struct HeadphonesPage: View {
                     Text("Sorties mémorisées").fontWeight(.semibold)
                     remembered
                 }
+                if model.outputIsSpeakers || !model.currentMeasurements.isEmpty {
+                    MeasurementHistory()
+                }
             }
             .frame(minWidth: 260, idealWidth: 340, maxWidth: 360, maxHeight: .infinity, alignment: .top)
         }
@@ -703,6 +706,114 @@ struct StereoWidthIllustration: View {
         }
         .padding(8)
         .background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Historique des mesures
+
+/// Mesures de la sortie actuelle : mini-courbe, date, qualité ; réappliquer ou supprimer.
+struct MeasurementHistory: View {
+    @EnvironmentObject var model: EQModel
+    @State private var toDelete: MeasurementRecord?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Historique des mesures").fontWeight(.semibold)
+                Spacer()
+                if !model.currentMeasurements.isEmpty {
+                    Text("\(model.currentMeasurements.count)").foregroundStyle(.secondary).monospacedDigit()
+                }
+            }
+            if model.currentMeasurements.isEmpty {
+                Text("Aucune mesure pour cette sortie. Chaque mesure réalisée sera gardée ici, appliquée ou non.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.quinary, in: RoundedRectangle(cornerRadius: 6))
+            } else {
+                List(model.currentMeasurements) { record in
+                    row(record)
+                        .contextMenu {
+                            Button("Appliquer cette mesure") { model.setCorrection(record.profile) }
+                                .disabled(isApplied(record))
+                            Divider()
+                            Button("Supprimer…", role: .destructive) { toDelete = record }
+                        }
+                }
+                .listStyle(.inset(alternatesRowBackgrounds: true))
+                .frame(height: CGFloat(min(model.currentMeasurements.count, 4)) * 46 + 10)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+            }
+        }
+        .confirmationDialog("Supprimer la mesure du \(toDelete.map { Self.dateText($0.date) } ?? "") ?",
+                            isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } })) {
+            Button("Supprimer", role: .destructive) {
+                if let r = toDelete { model.deleteMeasurement(r.id) }
+                toDelete = nil
+            }
+        } message: {
+            Text("La correction en cours n'est pas modifiée.")
+        }
+    }
+
+    private func isApplied(_ r: MeasurementRecord) -> Bool {
+        model.correction?.filters == r.profile.filters && model.correction?.measured == r.profile.measured
+    }
+
+    static func dateText(_ d: Date) -> String { d.formatted(date: .abbreviated, time: .shortened) }
+
+    private func row(_ r: MeasurementRecord) -> some View {
+        HStack(spacing: 10) {
+            MiniResponse(levels: r.profile.measured ?? [])
+                .frame(width: 64, height: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(Self.dateText(r.date)).lineLimit(1)
+                Text(r.snr > 0 ? "Qualité \(Int(r.snr)) dB · \(r.profile.filters.count) filtres" : "\(r.profile.filters.count) filtres")
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            if isApplied(r) {
+                Label("Appliquée", systemImage: "checkmark.circle.fill")
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(Color.accentColor)
+                    .help("Correction en cours")
+            } else {
+                Button("Appliquer") { model.setCorrection(r.profile) }
+                    .controlSize(.small)
+            }
+            Button { toDelete = r } label: { Image(systemName: "trash") }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Supprimer cette mesure")
+                .accessibilityLabel("Supprimer cette mesure")
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Petite courbe de la réponse mesurée (100 Hz – 10 kHz).
+struct MiniResponse: View {
+    let levels: [Double]
+
+    var body: some View {
+        Canvas { ctx, size in
+            let fs = SpeakerAnalysis.frequencies
+            guard levels.count == fs.count else { return }
+            let lo = log(80.0), hi = log(12_000.0)
+            var p = Path(), started = false
+            for (f, l) in zip(fs, levels) where f >= 80 && f <= 12_000 {
+                let pt = CGPoint(x: CGFloat((log(f) - lo) / (hi - lo)) * size.width,
+                                 y: size.height / 2 - CGFloat(l.clamped(to: -12...12) / 12) * size.height / 2)
+                if started { p.addLine(to: pt) } else { p.move(to: pt); started = true }
+            }
+            var mid = Path(); mid.move(to: CGPoint(x: 0, y: size.height / 2)); mid.addLine(to: CGPoint(x: size.width, y: size.height / 2))
+            ctx.stroke(mid, with: .color(.secondary.opacity(0.3)), style: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
+            ctx.stroke(p, with: .color(.orange), lineWidth: 1.5)
+        }
+        .background(.background.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
         .accessibilityHidden(true)
     }
 }
