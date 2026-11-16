@@ -388,6 +388,27 @@ struct ListeningPage: View {
                               footer: "Mélange légèrement les canaux gauche et droit, pour un son moins fatigant, plus proche d'enceintes.") {
                     toggleRow("Spatialisation casque", isOn: $model.crossfeed)
                 }
+                ListeningCard(title: "Haut-parleurs",
+                              footer: "Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. Mémorisé pour cette sortie.") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Élargissement stéréo")
+                            Spacer()
+                        }
+                        Picker("Élargissement stéréo", selection: $model.widening) {
+                            ForEach(0..<OutputOptions.levelerNames.count, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        if model.mono, model.widening > 0 {
+                            Label("Sans effet tant que le mono est activé (il n'y a plus de stéréo à élargir).", systemImage: "exclamationmark.circle")
+                                .font(.caption).foregroundStyle(.orange)
+                        } else if !model.outputIsSpeakers {
+                            Label("La sortie actuelle semble être un casque : préférez la spatialisation casque.", systemImage: "headphones")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 ListeningCard(title: "Sortie",
                               footer: "La balance déplace le son vers la gauche ou la droite : utile si une oreille entend moins bien, ou si vous n'êtes pas au centre des haut-parleurs.") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -411,6 +432,7 @@ struct ListeningPage: View {
             .padding(20)
         }
         .navigationTitle("Écoute")
+        .onAppear { model.refreshOutputKind() }
     }
 
     /// Libellé à gauche, interrupteur à droite.

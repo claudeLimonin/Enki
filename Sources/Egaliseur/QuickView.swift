@@ -36,6 +36,7 @@ struct QuickView: View {
         .onAppear {
             meter.start(model.engine.processor)
             model.refreshApps()
+            model.refreshOutputKind()
         }
         .onDisappear { meter.stop() }
     }
@@ -115,9 +116,16 @@ struct QuickView: View {
             ControlTile(title: String(localized: "Mode nuit"), symbol: "moon.fill",
                         detail: model.leveler > 0 ? OutputOptions.levelerNames[model.leveler] : String(localized: "Désactivé"),
                         isOn: model.leveler > 0) { model.toggleLevelerFromShortcut() }
-            ControlTile(title: String(localized: "Spatialisation"), symbol: "headphones",
-                        detail: model.crossfeed ? String(localized: "Casque") : String(localized: "Désactivée"),
-                        isOn: model.crossfeed) { model.crossfeed.toggle() }
+            // Haut-parleurs : élargissement stéréo. Casque : spatialisation.
+            if model.outputIsSpeakers {
+                ControlTile(title: String(localized: "Élargissement"), symbol: "arrow.left.and.right",
+                            detail: model.widening > 0 ? OutputOptions.levelerNames[model.widening] : String(localized: "Désactivé"),
+                            isOn: model.widening > 0) { model.toggleWidening() }
+            } else {
+                ControlTile(title: String(localized: "Spatialisation"), symbol: "headphones",
+                            detail: model.crossfeed ? String(localized: "Casque") : String(localized: "Désactivée"),
+                            isOn: model.crossfeed) { model.crossfeed.toggle() }
+            }
             ControlTile(title: String(localized: "Limiteur"), symbol: "waveform.path",
                         detail: !model.limiterEnabled ? (meter.active ? String(localized: "Saturation !") : String(localized: "Désactivé"))
                             : (meter.active ? String(localized: "En action") : String(localized: "Au repos")),

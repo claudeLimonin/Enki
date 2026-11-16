@@ -79,6 +79,27 @@ final class AudioEngine {
         return (uid, (try? string(id, kAudioObjectPropertyName)) ?? "")
     }
 
+    /// La sortie par défaut est des haut-parleurs : ceux du Mac (hors prise casque), un écran
+    /// (HDMI, DisplayPort) ou AirPlay. Bluetooth et USB sont supposés être un casque.
+    static func defaultOutputIsSpeakers() -> Bool {
+        guard let id = try? defaultOutputDevice(),
+              let transport: UInt32 = scalar(id, kAudioDevicePropertyTransportType, 0) else { return false }
+        switch transport {
+        case kAudioDeviceTransportTypeBuiltIn:
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDataSource,
+                                                  mScope: kAudioDevicePropertyScopeOutput,
+                                                  mElement: kAudioObjectPropertyElementMain)
+            var source: UInt32 = 0
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            let hasSource = AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &source) == noErr
+            return !(hasSource && source == 0x6864_706E) // 'hdpn' : prise casque
+        case kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort, kAudioDeviceTransportTypeAirPlay:
+            return true
+        default:
+            return false
+        }
+    }
+
     private static func defaultOutputDevice() throws -> AudioObjectID {
         var addr = address(kAudioHardwarePropertyDefaultOutputDevice)
         var id = AudioObjectID(kAudioObjectUnknown)

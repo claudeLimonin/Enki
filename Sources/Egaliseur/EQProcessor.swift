@@ -343,6 +343,7 @@ private struct OutputDSP {
     var crossCoef = 0.0, crossMix = 0.0, crossNorm = 1.0
     var mono = false
     var gainL = 1.0, gainR = 1.0
+    var widen = 0.0, widenCoef = 0.0
 
     init() {}
 
@@ -360,6 +361,8 @@ private struct OutputDSP {
         crossMix = 0.45
         crossNorm = 1 / (1 + crossMix)
         mono = o.mono
+        widen = OutputOptions.wideningAmounts[o.widening.clamped(to: 0...3)]
+        widenCoef = 1 - exp(-2 * Double.pi * OutputOptions.wideningCutoff / sampleRate)
         let b = o.balance.clamped(to: -1...1)
         gainL = b > 0 ? 1 - b : 1
         gainR = b < 0 ? 1 + b : 1
@@ -407,6 +410,8 @@ final class EQProcessor {
     private var levelEnv = (0.0, 0.0, 0.0)
     private var xoverL = Crossover3(), xoverR = Crossover3()
     private var crossLP = (0.0, 0.0)
+    /// Passe-bas des « côtés » de l'élargissement stéréo.
+    private var sideLP = 0.0
     private var dirty = false
     private var resetRequested = false
 
@@ -548,6 +553,7 @@ final class EQProcessor {
                 xoverL.reset()
                 xoverR.reset()
                 crossLP = (0, 0)
+                sideLP = 0
                 resetRequested = false
             }
             os_unfair_lock_unlock(lock)
@@ -589,6 +595,7 @@ final class EQProcessor {
         var env = levelEnv
         var levelDB = (0.0, 0.0, 0.0)
         var (lpL, lpR) = crossLP
+        var lpS = sideLP
         var written = scopeWritten.pointee
         let scopeMask = Self.scopeSize - 1
 
@@ -609,6 +616,14 @@ final class EQProcessor {
                 lpL += (l - lpL) * o.crossCoef
                 lpR += (r - lpR) * o.crossCoef
                 (l, r) = ((l + o.crossMix * lpR) * o.crossNorm, (r + o.crossMix * lpL) * o.crossNorm)
+            }
+            // Élargissement stéréo : les « côtés » (différence gauche − droite) sont renforcés
+            // au-dessus de 200 Hz. Le centre (voix) et les graves ne changent pas.
+            if o.widen > 0, !o.mono {
+                let mid = 0.5 * (l + r), side = 0.5 * (l - r)
+                lpS += (side - lpS) * o.widenCoef
+                let wide = side + o.widen * (side - lpS)
+                (l, r) = (mid + wide, mid - wide)
             }
             if o.mono {
                 let m = 0.5 * (l + r)
@@ -670,6 +685,7 @@ final class EQProcessor {
         levelMeter[1] = o.leveler ? Float(levelDB.1) : .nan
         levelMeter[2] = o.leveler ? Float(levelDB.2) : .nan
         crossLP = lpL.isFinite && lpR.isFinite ? (lpL, lpR) : (0, 0)
+        sideLP = lpS.isFinite ? lpS : 0
         let m = Float(minGain)
         if m < meter.pointee { meter.pointee = m }
     }

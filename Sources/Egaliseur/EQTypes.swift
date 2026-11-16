@@ -76,6 +76,13 @@ struct OutputOptions: Equatable {
     var mono = false
     /// −1 (tout à gauche) … 0 (centre) … +1 (tout à droite).
     var balance = 0.0
+    /// Élargissement stéréo (haut-parleurs proches, comme ceux d'un portable) : 0 coupé, 1 léger, 2 moyen, 3 fort.
+    var widening = 0
+
+    /// Renfort des « côtés » (différence gauche − droite) pour Léger, Moyen, Fort.
+    static let wideningAmounts = [0.0, 0.4, 0.8, 1.3]
+    /// Sous cette fréquence, les côtés ne sont pas renforcés : graves intacts, pas d'effet de phase.
+    static let wideningCutoff = 200.0
 
     /// Fréquences de séparation du mode nuit : graves | voix | aigus.
     static let nightCrossovers = (200.0, 4000.0)

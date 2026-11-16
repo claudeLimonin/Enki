@@ -476,7 +476,6 @@
 "Musiques du monde : Antilles, Caraïbes, Afrique, Amérique du Sud" = "World music: French Caribbean, Caribbean, Africa, South America";
 "Afficher" = "Show";
 "Spectre en direct" = "Live spectrum";
-"Correction de casque" = "Headphone correction";
 "Choisir ce qu'affiche le graphique" = "Choose what the graph shows";
 "Rechercher une application" = "Search for an app";
 "La balance déplace le son vers la gauche ou la droite : utile si une oreille entend moins bien, ou si vous n'êtes pas au centre des haut-parleurs." = "Balance moves the sound to the left or right: useful if one ear hears less well, or if you are not centered between the speakers.";
@@ -489,3 +488,9 @@
 "Gauche" = "Left";
 "Centre" = "Center";
 "Droite" = "Right";
+"Élargissement" = "Widening";
+"Haut-parleurs" = "Speakers";
+"Élargissement stéréo" = "Stereo widening";
+"Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. Mémorisé pour cette sortie." = "For speakers close to each other, like a MacBook's: the sound feels wider, voices stay centered. Remembered for this output.";
+"La sortie actuelle semble être un casque : préférez la spatialisation casque." = "The current output looks like headphones: prefer headphone spatialization.";
+"Sans effet tant que le mono est activé (il n'y a plus de stéréo à élargir)." = "No effect while mono is on (there is no stereo left to widen).";

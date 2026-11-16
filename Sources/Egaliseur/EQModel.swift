@@ -28,6 +28,8 @@ struct DeviceSetting: Codable, Equatable {
     var filters: [EQFilter]? = nil
     var correction: HeadphoneProfile? = nil
     var correctionOn: Bool? = nil
+    /// Élargissement stéréo de cette sortie (absent : coupé).
+    var widening: Int? = nil
 }
 
 /// Ce qu'une application reçoit : l'égaliseur principal, rien, ou un préréglage.
@@ -181,6 +183,22 @@ final class EQModel: ObservableObject {
     @Published var crossfeed: Bool { didSet { if crossfeed != oldValue { push(); save() } } }
     @Published var mono: Bool { didSet { if mono != oldValue { push(); save() } } }
     @Published var balance: Double { didSet { if balance != oldValue { push(); save() } } }
+    /// Élargissement stéréo pour haut-parleurs : 0 coupé, 1 léger, 2 moyen, 3 fort. Mémorisé par sortie.
+    @Published var widening: Int { didSet { if widening != oldValue { push(); save() } } }
+    /// La sortie actuelle est des haut-parleurs (et non un casque) : décide de la tuile proposée.
+    @Published private(set) var outputIsSpeakers = false
+    private var lastWidening = 2
+
+    /// Relit le type de sortie (un casque branché sur la prise du Mac ne change pas de sortie).
+    func refreshOutputKind() {
+        let speakers = AudioEngine.defaultOutputIsSpeakers()
+        if speakers != outputIsSpeakers { outputIsSpeakers = speakers }
+    }
+
+    /// Tuile de la vue rapide : coupe l'élargissement, ou le remet au dernier niveau.
+    func toggleWidening() {
+        if widening > 0 { lastWidening = widening; widening = 0 } else { widening = lastWidening }
+    }
 
     /// Raccourcis clavier globaux (⌃⌥⌘E, ⌃⌥⌘←/→, ⌃⌥⌘N).
     @Published var hotkeysEnabled: Bool { didSet { if hotkeysEnabled != oldValue { save() } } }
@@ -228,7 +246,7 @@ final class EQModel: ObservableObject {
     }
 
     var outputOptions: OutputOptions {
-        OutputOptions(leveler: leveler, crossfeed: crossfeed, mono: mono, balance: balance)
+        OutputOptions(leveler: leveler, crossfeed: crossfeed, mono: mono, balance: balance, widening: widening)
     }
 
     // MARK: Correction de casque
@@ -303,6 +321,7 @@ final class EQModel: ObservableObject {
         crossfeed = defaults.bool(forKey: "crossfeed")
         mono = defaults.bool(forKey: "mono")
         balance = (defaults.object(forKey: "balance") as? Double ?? 0).clamped(to: -1...1)
+        widening = defaults.integer(forKey: "widening").clamped(to: 0...3)
         hotkeysEnabled = defaults.object(forKey: "hotkeys") as? Bool ?? true
         notificationsEnabled = defaults.object(forKey: "notifications") as? Bool ?? true
         showSpectrum = defaults.object(forKey: "showSpectrum") as? Bool ?? true
@@ -557,11 +576,13 @@ final class EQModel: ObservableObject {
         // D'abord changer de sortie : chaque modification ci-dessous déclenche save(),
         // qui doit écrire dans la nouvelle sortie et non écraser l'ancienne.
         currentDevice = (uid, name)
+        outputIsSpeakers = AudioEngine.defaultOutputIsSpeakers()
         defer { push(); save() }
         guard perDevice, changed else { return }
         guard let setting = deviceSettings[uid] else {
-            // La correction d'un casque ne s'applique pas à un autre appareil.
+            // La correction d'un casque ne s'applique pas à un autre appareil, ni l'élargissement.
             correction = nil
+            widening = 0
             return
         }
         applyingPreset = true
@@ -575,6 +596,7 @@ final class EQModel: ObservableObject {
         isModified = known ? setting.modified : false
         correction = setting.correction
         correctionEnabled = setting.correctionOn ?? true
+        widening = setting.widening ?? 0
     }
 
     /// Nombre de sorties ayant un réglage mémorisé (pour l'affichage).
@@ -751,6 +773,7 @@ final class EQModel: ObservableObject {
         defaults.set(limiterEnabled, forKey: "limiter")
         defaults.set(leveler, forKey: "leveler")
         defaults.set(crossfeed, forKey: "crossfeed")
+        defaults.set(widening, forKey: "widening")
         defaults.set(mono, forKey: "mono")
         defaults.set(balance, forKey: "balance")
         defaults.set(hotkeysEnabled, forKey: "hotkeys")
@@ -767,7 +790,8 @@ final class EQModel: ObservableObject {
                 name: device.name, gains: gains, preamp: preamp,
                 preset: selectedPreset, modified: isModified,
                 mode: mode, filters: filters,
-                correction: correction, correctionOn: correctionEnabled)
+                correction: correction, correctionOn: correctionEnabled,
+                widening: widening)
         }
         encode(deviceSettings, "deviceSettings")
     }
