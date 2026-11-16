@@ -115,7 +115,14 @@ enum PresetFile {
 
     /// Enregistre les réglages actuels dans un fichier à partager.
     static func export(from model: EQModel) {
-        let name = model.selectedPreset ?? "Mon réglage"
+        let name = model.selectedPreset.map(model.display) ?? String(localized: "Mon réglage")
+        export(EQPreset(name: name, gains: model.gains, preamp: model.preamp, mode: model.mode,
+                        filters: model.mode == .parametric ? model.filters : nil))
+    }
+
+    /// Enregistre un préréglage donné dans un fichier à partager (nom du fichier = nom du préréglage).
+    static func export(_ preset: EQPreset) {
+        let name = preset.displayName
         let panel = NSSavePanel()
         panel.title = String(localized: "Partager ce réglage")
         panel.message = String(localized: "Un fichier à envoyer : un double-clic dessus l'ajoute aux préréglages d'Enki Audio.")
@@ -124,8 +131,8 @@ enum PresetFile {
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let presetName = url.deletingPathExtension().lastPathComponent
-        let p = EQPreset(name: presetName, gains: model.gains, preamp: model.preamp, mode: model.mode,
-                         filters: model.mode == .parametric ? model.filters : nil)
+        var p = preset
+        p.name = presetName
         do { try encode(p).write(to: url, options: .atomic) } catch { alert(String(localized: "Le partage a échoué"), error.localizedDescription) }
     }
 

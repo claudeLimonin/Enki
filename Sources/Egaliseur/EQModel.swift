@@ -125,6 +125,15 @@ final class EQModel: ObservableObject {
     @Published var hotkeysEnabled: Bool { didSet { if hotkeysEnabled != oldValue { save() } } }
     /// Petite bulle sous l'icône quand le réglage change (raccourci, casque branché…).
     @Published var notificationsEnabled: Bool { didSet { if notificationsEnabled != oldValue { save() } } }
+
+    /// Comparer A/B : tant que c'est vrai, le son passe sans aucun traitement (limiteur excepté),
+    /// sans redémarrer le moteur. Jamais enregistré.
+    @Published var comparing = false { didSet { if comparing != oldValue { push() } } }
+
+    /// Calques affichés sur le graphique de la fenêtre.
+    @Published var showSpectrum: Bool { didSet { if showSpectrum != oldValue { save() } } }
+    @Published var showCorrectionLayer: Bool { didSet { if showCorrectionLayer != oldValue { save() } } }
+    @Published var showNightLayer: Bool { didSet { if showNightLayer != oldValue { save() } } }
     /// Affiche la bulle (fourni par l'icône de la barre des menus).
     var onNotify: ((String, String) -> Void)?
     private var lastLeveler = 2
@@ -165,7 +174,6 @@ final class EQModel: ObservableObject {
 
     @Published private(set) var correction: HeadphoneProfile?
     /// Demande (depuis le menu clic droit) d'ouvrir directement la recherche de casque.
-    @Published var openHeadphoneSearch = false
     @Published var correctionEnabled: Bool { didSet { if correctionEnabled != oldValue { push(); save() } } }
 
     // MARK: Sorties audio
@@ -236,6 +244,9 @@ final class EQModel: ObservableObject {
         balance = (defaults.object(forKey: "balance") as? Double ?? 0).clamped(to: -1...1)
         hotkeysEnabled = defaults.object(forKey: "hotkeys") as? Bool ?? true
         notificationsEnabled = defaults.object(forKey: "notifications") as? Bool ?? true
+        showSpectrum = defaults.object(forKey: "showSpectrum") as? Bool ?? true
+        showCorrectionLayer = defaults.object(forKey: "showCorrectionLayer") as? Bool ?? true
+        showNightLayer = defaults.object(forKey: "showNightLayer") as? Bool ?? true
         deviceSettings = decode("deviceSettings", [String: DeviceSetting].self) ?? [:]
         correction = decode("correction", HeadphoneProfile.self)
         correctionEnabled = defaults.object(forKey: "correctionOn") as? Bool ?? true
@@ -356,8 +367,14 @@ final class EQModel: ObservableObject {
 
     @discardableResult
     func renameSelected(to raw: String) -> String? {
-        guard let old = selectedUserPreset?.name,
-              let i = userPresets.firstIndex(where: { $0.name == old }) else { return nil }
+        guard let old = selectedUserPreset?.name else { return nil }
+        return renamePreset(old, to: raw)
+    }
+
+    /// Renomme un préréglage personnel. Renvoie un message d'erreur éventuel.
+    @discardableResult
+    func renamePreset(_ old: String, to raw: String) -> String? {
+        guard let i = userPresets.firstIndex(where: { $0.name == old }) else { return nil }
         if let error = validateName(raw, excluding: old) { return error }
         let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         userPresets[i].name = name
@@ -367,19 +384,26 @@ final class EQModel: ObservableObject {
             deviceSettings[uid]?.preset = name
         }
         for i in appRules.indices where appRules[i].preset == old { appRules[i].preset = name }
-        selectedPreset = name
+        if selectedPreset == old { selectedPreset = name }
         save()
         return nil
     }
 
     func deleteSelected() {
         guard let name = selectedUserPreset?.name else { return }
+        deletePreset(name)
+    }
+
+    /// Supprime un préréglage personnel. Les réglages en cours ne bougent pas.
+    func deletePreset(_ name: String) {
+        guard userPresets.contains(where: { $0.name == name }) else { return }
         userPresets.removeAll { $0.name == name }
         // Les applications qui l'utilisaient reviennent à l'égaliseur principal.
         appRules.removeAll { $0.preset == name }
-        // Les réglages ne bougent pas : on passe simplement en réglage libre.
-        selectedPreset = nil
-        isModified = false
+        if selectedPreset == name {
+            selectedPreset = nil
+            isModified = false
+        }
         restartIfGroupsChanged()
         push()
         save()
@@ -495,6 +519,13 @@ final class EQModel: ObservableObject {
     /// Nombre de sorties ayant un réglage mémorisé (pour l'affichage).
     var rememberedDeviceCount: Int { deviceSettings.count }
 
+    /// Sorties mémorisées, pour l'affichage : nom, préréglage, correction éventuelle.
+    var rememberedDevices: [(id: String, name: String, preset: String, correction: String?)] {
+        deviceSettings.map { uid, s in
+            (uid, s.name, s.preset.map(display) ?? Self.customDisplayName, s.correction.map(\.name))
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
     // MARK: - Égaliseur par application
 
     func choice(for bundleID: String) -> AppChoice {
@@ -524,6 +555,16 @@ final class EQModel: ObservableObject {
     }
 
     /// Applications à afficher : celles qui jouent du son, plus celles déjà réglées.
+    /// Applications de la page Applications : toutes celles qui ont utilisé le son, plus celles déjà réglées.
+    var appPageItems: [AudioApp] {
+        var items = audioApps
+        for rule in appRules where !items.contains(where: { $0.bundleID == rule.bundleID }) {
+            items.append(AudioApp(bundleID: rule.bundleID, name: AppAudio.displayName(for: rule.bundleID) ?? rule.name,
+                                  isPlaying: false, objects: []))
+        }
+        return items.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
     var appMenuItems: [AudioApp] {
         var items = audioApps.filter { app in
             app.isPlaying || appRules.contains { $0.bundleID == app.bundleID }
@@ -585,6 +626,11 @@ final class EQModel: ObservableObject {
         var post = ChainConfig.neutral
         if correctionEnabled, let c = correction {
             post = ChainConfig(filters: c.filters.map { EQMath.coefficients($0, sampleRate: rate) }, preampDB: c.preamp)
+        }
+        if comparing {
+            engine.processor.update(sources: sources.map { _ in .neutral }, post: .neutral, sampleRate: rate,
+                                    limiter: limiterEnabled, output: OutputOptions(), reset: reset)
+            return
         }
         engine.processor.update(sources: sources, post: post, sampleRate: rate,
                                 limiter: limiterEnabled, output: outputOptions, reset: reset)
@@ -648,6 +694,9 @@ final class EQModel: ObservableObject {
         defaults.set(balance, forKey: "balance")
         defaults.set(hotkeysEnabled, forKey: "hotkeys")
         defaults.set(notificationsEnabled, forKey: "notifications")
+        defaults.set(showSpectrum, forKey: "showSpectrum")
+        defaults.set(showCorrectionLayer, forKey: "showCorrectionLayer")
+        defaults.set(showNightLayer, forKey: "showNightLayer")
         encode(correction, "correction")
         defaults.set(correctionEnabled, forKey: "correctionOn")
         encode(appRules, "appRules")

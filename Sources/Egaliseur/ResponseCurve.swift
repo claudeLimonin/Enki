@@ -6,14 +6,16 @@ struct SpectrumPanel: View {
     @EnvironmentObject var model: EQModel
     @StateObject private var analyzer = SpectrumAnalyzer()
     @Binding var selectedBand: UUID?
+    /// Version compacte (vue rapide) : ni repères, ni étiquettes, ni points déplaçables.
+    var compact = false
 
     var body: some View {
         ResponseCurve(
             settings: model.settings,
-            correction: model.correctionEnabled ? (model.correction?.filters ?? []) : [],
+            correction: model.correctionEnabled && model.showCorrectionLayer ? (model.correction?.filters ?? []) : [],
             sampleRate: model.sampleRate,
             active: model.enabled,
-            spectrum: analyzer.levels,
+            spectrum: model.showSpectrum || compact ? analyzer.levels : [],
             selected: selectedBand,
             onSelect: { selectedBand = $0 },
             onMove: { id, f, g in
@@ -25,8 +27,9 @@ struct SpectrumPanel: View {
                 if let id = model.addBand(at: f, gain: g) { selectedBand = id }
             },
             onDragEnd: { model.sortBands() },
-            levelerDB: model.leveler > 0 ? analyzer.levelerDB : nil,
-            levelerName: OutputOptions.levelerNames[model.leveler])
+            levelerDB: model.leveler > 0 && (model.showNightLayer || compact) ? analyzer.levelerDB : nil,
+            levelerName: OutputOptions.levelerNames[model.leveler],
+            compact: compact)
             .onAppear { startIfNeeded() }
             .onDisappear { analyzer.stop() }
             .onChange(of: model.enabled) { _, _ in startIfNeeded() }
@@ -58,6 +61,7 @@ struct ResponseCurve: View {
     /// Effet actuel du volume nivelé (dB) et nom de son niveau ; nil s'il est coupé.
     var levelerDB: [Double]? = nil
     var levelerName = ""
+    var compact = false
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var dragging: UUID?
@@ -130,8 +134,8 @@ struct ResponseCurve: View {
         GeometryReader { geo in
             canvas
                 .contentShape(Rectangle())
-                .gesture(dragGesture(geo.size), including: parametric && onMove != nil ? .all : .subviews)
-                .simultaneousGesture(addGesture(geo.size), including: parametric && onAdd != nil ? .all : .subviews)
+                .gesture(dragGesture(geo.size), including: parametric && !compact && onMove != nil ? .all : .subviews)
+                .simultaneousGesture(addGesture(geo.size), including: parametric && !compact && onAdd != nil ? .all : .subviews)
         }
         .background(.quinary, in: RoundedRectangle(cornerRadius: 8))
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -194,7 +198,7 @@ struct ResponseCurve: View {
             // Repères de niveau et de fréquence, très discrets.
             let gridColor = Color.secondary.opacity(0.14)
             let labelColor = Color.secondary.opacity(0.75)
-            for db in gridDB {
+            for db in (compact ? [] : gridDB) {
                 var line = Path()
                 line.move(to: CGPoint(x: 0, y: y(db, h)))
                 line.addLine(to: CGPoint(x: w, y: y(db, h)))
@@ -204,7 +208,7 @@ struct ResponseCurve: View {
                 ctx.draw(Text(db > 0 ? "+\(Int(db))" : "−\(Int(-db))").font(.system(size: 8)).foregroundColor(labelColor),
                          at: CGPoint(x: w - 3, y: y(db, h) - 1), anchor: .bottomTrailing)
             }
-            for (f, label) in Self.gridHz {
+            for (f, label) in (compact ? [] : Self.gridHz) {
                 var line = Path()
                 line.move(to: CGPoint(x: x(f, w), y: 0))
                 line.addLine(to: CGPoint(x: x(f, w), y: h))
@@ -284,6 +288,7 @@ struct ResponseCurve: View {
                     String(format: "%+.1f", v).replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ",")
                 }
                 // Étiquette sur un fond, pour rester lisible par-dessus les repères et le spectre.
+                if !compact {
                 let label = ctx.resolve(Text("☾ " + String(localized: "Mode nuit (\(levelerName)) · graves \(fmt(gains[0])) · voix \(fmt(gains[1])) · aigus \(fmt(gains[2])) dB"))
                     .font(.system(size: 10, weight: .semibold)).foregroundColor(night))
                 let size = label.measure(in: CGSize(width: w, height: 20))
@@ -292,10 +297,11 @@ struct ResponseCurve: View {
                               cornerRadius: 5),
                          with: .color(dark ? Color.black.opacity(0.55) : Color.white.opacity(0.85)))
                 ctx.draw(label, at: origin, anchor: .topLeading)
+                }
             }
 
             // Points des bandes paramétriques.
-            if parametric {
+            if parametric && !compact {
                 for (i, f) in settings.filters.enumerated() {
                     let isSel = f.id == selected
                     let r: CGFloat = isSel ? Self.handleRadius : 7
@@ -308,7 +314,7 @@ struct ResponseCurve: View {
             }
 
             // Légende de la correction.
-            if !correction.isEmpty {
+            if !correction.isEmpty && !compact {
                 ctx.draw(Text("Correction casque").font(.system(size: 9, weight: .medium))
                             .foregroundColor(Color.purple.opacity(0.9)),
                          at: CGPoint(x: 6, y: 5), anchor: .topLeading)

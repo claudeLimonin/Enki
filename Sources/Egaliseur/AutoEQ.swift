@@ -26,6 +26,9 @@ enum AutoEQ {
 
     private static let base = "https://raw.githubusercontent.com/jaakkopasanen/AutoEq/master/results/"
     /// Sources aux mesures les plus fiables d'abord (classement des résultats).
+    /// Mesures de référence, mises en avant dans la recherche.
+    static func isRecommended(_ source: String) -> Bool { source == "oratory1990" || source == "crinacle" }
+
     private static let preferredSources = ["oratory1990", "crinacle", "Rtings", "Innerfidelity", "Super Review"]
     private static let cacheLifetime: TimeInterval = 30 * 24 * 3600
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Éléments de la fenêtre que la visite guidée peut mettre en évidence.
 enum TourAnchor: Hashable {
-    case power, preset, mode, graph, controls, headphone, apps, limiter, settings
+    case power, output, preset, graph, tiles, window
 }
 
 /// Une étape de la visite guidée.
@@ -27,37 +27,27 @@ final class Tour: ObservableObject {
     static let steps: [TourStep] = [
         TourStep(id: 0, anchor: nil,
                  title: String(localized: "Bienvenue dans Enki Audio"),
-                 text: String(localized: "Enki Audio règle le son de tout votre Mac : musique, vidéos, jeux, visioconférences.\n\nIl vit dans la barre des menus, en haut à droite de l'écran : la petite flèche au-dessus de cette fenêtre pointe vers son icône. Clic gauche pour ouvrir cette fenêtre, clic droit pour les options.")),
+                 text: String(localized: "Enki Audio règle le son de tout votre Mac : musique, vidéos, jeux, visioconférences.\n\nIl vit dans la barre des menus, en haut à droite de l'écran. Un clic sur son icône ouvre cette vue rapide ; les réglages fins sont dans la fenêtre Enki Audio.")),
         TourStep(id: 1, anchor: .power,
                  title: String(localized: "Allumer ou couper"),
-                 text: String(localized: "Cet interrupteur active l'égaliseur. Juste à gauche, l'état indique la sortie audio utilisée (haut-parleurs, casque…)."),
+                 text: String(localized: "Cet interrupteur active l'égaliseur. Juste dessous, l'état indique ce qui se passe."),
                  tryIt: String(localized: "Essayez : coupez puis rallumez pour comparer avec le son d'origine.")),
-        TourStep(id: 2, anchor: .preset,
+        TourStep(id: 2, anchor: .output,
+                 title: String(localized: "Votre sortie audio"),
+                 text: String(localized: "Casque, haut-parleurs… chaque sortie garde son propre réglage. Cliquez ici pour choisir la correction de votre casque parmi plus de 8 000 profils mesurés.")),
+        TourStep(id: 3, anchor: .preset,
                  title: String(localized: "Les préréglages"),
-                 text: String(localized: "Choisissez un réglage tout prêt (Rock, Voix, Basses renforcées…), ou enregistrez les vôtres avec « Enregistrer sous… ». Le bouton ↺ remet tout à zéro."),
-                 tryIt: String(localized: "Essayez : ouvrez le menu et choisissez « Basses renforcées ».")),
-        TourStep(id: 3, anchor: .mode,
-                 title: String(localized: "Deux façons de régler"),
-                 text: String(localized: "Graphique : 10 curseurs fixes, simple et rapide.\nParamétrique : des bandes libres dont vous choisissez la fréquence, le gain et la largeur, comme en studio. Votre courbe est reprise d'un mode à l'autre.")),
+                 text: String(localized: "Choisissez un réglage tout prêt (Rock, Voix, Basses renforcées…). Vous pourrez enregistrer les vôtres depuis la fenêtre."),
+                 tryIt: String(localized: "Essayez : choisissez « Basses renforcées ».")),
         TourStep(id: 4, anchor: .graph,
                  title: String(localized: "Ce que vous entendez"),
-                 text: String(localized: "La courbe montre l'effet de vos réglages. Les barres derrière montrent en direct les fréquences de la musique : vert au repos, jaune puis rouge sur les pics.\n\nEn mode paramétrique, glissez les points numérotés ; double-cliquez pour en ajouter un.")),
-        TourStep(id: 5, anchor: .controls,
-                 title: String(localized: "Les réglages"),
-                 text: String(localized: "Montez un curseur pour renforcer une zone, baissez-le pour l'atténuer : à gauche les graves, à droite les aigus. Le préampli baisse le volume global pour éviter la saturation."),
-                 tryIt: String(localized: "Essayez : montez le curseur 64 et écoutez les basses.")),
-        TourStep(id: 6, anchor: .headphone,
-                 title: String(localized: "Correction de casque"),
-                 text: String(localized: "Choisissez votre modèle de casque parmi plus de 8 000 profils mesurés (AutoEQ) : son rendu devient plus neutre. La correction est mémorisée pour ce casque uniquement.")),
-        TourStep(id: 7, anchor: .apps,
-                 title: String(localized: "Un réglage par application"),
-                 text: String(localized: "Donnez à une application son propre réglage : « Voix » pour vos visioconférences, « Rock » pour Spotify… Les autres gardent l'égaliseur principal.")),
-        TourStep(id: 8, anchor: .limiter,
-                 title: String(localized: "Le limiteur"),
-                 text: String(localized: "Il évite que le son sature quand vous renforcez des fréquences. Il s'allume en orange quand il agit ; s'il reste souvent allumé, baissez le préampli. Cliquez dessus pour le couper.")),
-        TourStep(id: 9, anchor: .settings,
-                 title: String(localized: "Les options"),
-                 text: String(localized: "Ouverture au démarrage du Mac, réglage mémorisé par sortie audio, autorisation audio, et ce guide, que vous pourrez revoir à tout moment.")),
+                 text: String(localized: "La courbe montre l'effet de vos réglages, et les barres les fréquences de la musique en direct.")),
+        TourStep(id: 5, anchor: .tiles,
+                 title: String(localized: "Les commandes rapides"),
+                 text: String(localized: "Mode nuit pour écouter bas sans perdre les dialogues, spatialisation pour le casque, limiteur contre la saturation (orange quand il agit), mono. Un clic suffit.")),
+        TourStep(id: 6, anchor: .window,
+                 title: String(localized: "Aller plus loin"),
+                 text: String(localized: "La fenêtre Enki Audio (⌃⌥⌘O) donne accès à l'égaliseur complet, au mode paramétrique, à la correction de casque et au réglage par application. Les Réglages (⌘,) gardent les options et ce guide.")),
     ]
 
     var step: TourStep? { index.map { Self.steps[$0] } }
@@ -131,7 +121,7 @@ struct TourOverlay: View {
 
     @ViewBuilder
     private func callout(_ step: TourStep, hole: CGRect?, size: CGSize) -> some View {
-        let width: CGFloat = hole == nil ? 380 : 300
+        let width: CGFloat = min(hole == nil ? 380 : 300, size.width - 24)
         let card = card(step, width: width)
         if let hole {
             // Sous l'élément s'il est dans la moitié haute, au-dessus sinon.
@@ -222,7 +212,7 @@ struct TourOverlay: View {
                     }
                 }
             }
-        case .settings:
+        case .window:
             Toggle("Ouvrir Enki Audio au démarrage du Mac", isOn: Binding(
                 get: { LaunchAtLogin.isEnabled },
                 set: { _ in LaunchAtLogin.toggle() }))
