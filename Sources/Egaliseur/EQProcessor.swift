@@ -343,7 +343,9 @@ private struct OutputDSP {
     var crossCoef = 0.0, crossMix = 0.0, crossNorm = 1.0
     var mono = false
     var gainL = 1.0, gainR = 1.0
-    var widen = 0.0, widenCoef = 0.0
+    /// Largeur stéréo : réduction des côtés (< 100 %) puis renfort au-dessus de 200 Hz (> 100 %).
+    var width = false
+    var sideScale = 1.0, widen = 0.0, widenCoef = 0.0
     /// Annulation de diaphonie (niveau Immersif).
     var ctc = false
     var ctcDelay = 0.0, ctcGain = 0.0, ctcLow = 0.0, ctcHigh = 0.0
@@ -364,15 +366,18 @@ private struct OutputDSP {
         crossMix = 0.45
         crossNorm = 1 / (1 + crossMix)
         mono = o.mono
-        widen = OutputOptions.wideningAmounts[o.widening.clamped(to: 0...4)]
+        let w = o.width.clamped(to: OutputOptions.widthRange)
+        sideScale = min(w, 1)
+        widen = max(w - 1, 0) * OutputOptions.maxWidening
             * OutputOptions.distanceFactors[o.distance.clamped(to: 0...2)]
-        ctc = o.widening == OutputOptions.immersiveLevel
+        width = w != 1
+        widenCoef = 1 - exp(-2 * Double.pi * OutputOptions.wideningCutoff / sampleRate)
+        ctc = o.immersive
         ctcDelay = (OutputOptions.crosstalkDelay(distance: o.distance) * sampleRate)
             .clamped(to: 1...Double(EQProcessor.ctcSize - 2))
         ctcGain = OutputOptions.ctcGain
         ctcLow = 1 - exp(-2 * Double.pi * OutputOptions.ctcBand.low / sampleRate)
         ctcHigh = 1 - exp(-2 * Double.pi * OutputOptions.ctcBand.high / sampleRate)
-        widenCoef = 1 - exp(-2 * Double.pi * OutputOptions.wideningCutoff / sampleRate)
         let b = o.balance.clamped(to: -1...1)
         gainL = b > 0 ? 1 - b : 1
         gainR = b < 0 ? 1 + b : 1
@@ -641,10 +646,11 @@ final class EQProcessor {
                 lpR += (r - lpR) * o.crossCoef
                 (l, r) = ((l + o.crossMix * lpR) * o.crossNorm, (r + o.crossMix * lpL) * o.crossNorm)
             }
-            // Élargissement stéréo : les « côtés » (différence gauche − droite) sont renforcés
-            // au-dessus de 200 Hz. Le centre (voix) et les graves ne changent pas.
-            if o.widen > 0, !o.mono {
-                let mid = 0.5 * (l + r), side = 0.5 * (l - r)
+            // Largeur stéréo : les « côtés » (différence gauche − droite) sont réduits sous 100 %
+            // (jusqu'au mono à 0 %), et renforcés au-dessus de 200 Hz au-delà de 100 %.
+            // Le centre (voix) ne change pas.
+            if o.width, !o.mono {
+                let mid = 0.5 * (l + r), side = 0.5 * (l - r) * o.sideScale
                 lpS += (side - lpS) * o.widenCoef
                 let wide = side + o.widen * (side - lpS)
                 (l, r) = (mid + wide, mid - wide)

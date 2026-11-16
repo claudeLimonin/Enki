@@ -28,8 +28,11 @@ struct DeviceSetting: Codable, Equatable {
     var filters: [EQFilter]? = nil
     var correction: HeadphoneProfile? = nil
     var correctionOn: Bool? = nil
-    /// Élargissement stéréo de cette sortie (absent : coupé).
+    /// Ancien niveau d'élargissement (versions 2.5 et avant), converti à la lecture.
     var widening: Int? = nil
+    /// Largeur stéréo de cette sortie (absente : originale) et mode Immersif.
+    var width: Double? = nil
+    var immersive: Bool? = nil
     /// Distance d'écoute de cette sortie (absent : normale).
     var distance: Int? = nil
 }
@@ -186,32 +189,60 @@ final class EQModel: ObservableObject {
     @Published var mono: Bool {
         didSet {
             guard mono != oldValue else { return }
-            // Mono et élargissement s'excluent : en mono, il n'y a plus de stéréo à élargir.
-            if mono, widening > 0, !loading {
-                lastWidening = widening
-                widening = 0
-                notify(String(localized: "Mono : élargissement stéréo coupé"), symbol: "speaker.wave.1.fill")
+            // Mono et largeur stéréo s'excluent : en mono, il n'y a plus de stéréo à régler.
+            if mono, spatialActive, !loading {
+                lastSpatial = (stereoWidth, immersive)
+                stereoWidth = 1
+                immersive = false
+                notify(String(localized: "Mono : largeur stéréo remise à l'original"), symbol: "speaker.wave.1.fill")
             }
             push(); save()
         }
     }
     @Published var balance: Double { didSet { if balance != oldValue { push(); save() } } }
-    /// Élargissement stéréo pour haut-parleurs : 0 coupé, 1 léger, 2 moyen, 3 fort. Mémorisé par sortie.
-    @Published var widening: Int {
+    /// Largeur stéréo : 0 mono, 1 original, 2 élargie. Mémorisée par sortie.
+    @Published var stereoWidth: Double {
         didSet {
-            guard widening != oldValue else { return }
-            if widening > 0, mono, !loading {
-                mono = false
-                notify(String(localized: "Élargissement stéréo : mono coupé"), symbol: "arrow.left.and.right")
-            }
+            guard stereoWidth != oldValue else { return }
+            leaveMonoIfNeeded()
             push(); save()
         }
     }
+    /// Immersif : annulation de diaphonie (haut-parleurs proches). Mémorisé par sortie.
+    @Published var immersive: Bool {
+        didSet {
+            guard immersive != oldValue else { return }
+            leaveMonoIfNeeded()
+            push(); save()
+        }
+    }
+    /// La largeur ou l'Immersif modifient le son.
+    var spatialActive: Bool { abs(stereoWidth - 1) > 0.001 || immersive }
+    private var lastSpatial: (width: Double, immersive: Bool) = (1.5, false)
+
+    private func leaveMonoIfNeeded() {
+        if spatialActive, mono, !loading {
+            mono = false
+            notify(String(localized: "Largeur stéréo : mono coupé"), symbol: "arrow.left.and.right")
+        }
+    }
+
+    /// Tuile de la vue rapide : revient à l'original, ou retrouve la dernière largeur choisie.
+    func toggleSpatial() {
+        if spatialActive {
+            lastSpatial = (stereoWidth, immersive)
+            stereoWidth = 1
+            immersive = false
+        } else {
+            stereoWidth = lastSpatial.width
+            immersive = lastSpatial.immersive
+        }
+    }
+
     /// Distance d'écoute (0 proche, 1 normale, 2 loin) : ajuste l'élargissement. Mémorisée par sortie.
     @Published var listeningDistance: Int { didSet { if listeningDistance != oldValue { push(); save() } } }
     /// La sortie actuelle est des haut-parleurs (et non un casque) : décide de la tuile proposée.
     @Published private(set) var outputIsSpeakers = false
-    private var lastWidening = 2
 
     /// Relit le type de sortie (un casque branché sur la prise du Mac ne change pas de sortie).
     func refreshOutputKind() {
@@ -219,10 +250,6 @@ final class EQModel: ObservableObject {
         if speakers != outputIsSpeakers { outputIsSpeakers = speakers }
     }
 
-    /// Tuile de la vue rapide : coupe l'élargissement, ou le remet au dernier niveau.
-    func toggleWidening() {
-        if widening > 0 { lastWidening = widening; widening = 0 } else { widening = lastWidening }
-    }
 
     /// Raccourcis clavier globaux (⌃⌥⌘E, ⌃⌥⌘←/→, ⌃⌥⌘N).
     @Published var hotkeysEnabled: Bool { didSet { if hotkeysEnabled != oldValue { save() } } }
@@ -270,7 +297,7 @@ final class EQModel: ObservableObject {
     }
 
     var outputOptions: OutputOptions {
-        OutputOptions(leveler: leveler, crossfeed: crossfeed, mono: mono, balance: balance, widening: widening, distance: listeningDistance)
+        OutputOptions(leveler: leveler, crossfeed: crossfeed, mono: mono, balance: balance, width: stereoWidth, immersive: immersive, distance: listeningDistance)
     }
 
     // MARK: Correction de casque
@@ -345,7 +372,12 @@ final class EQModel: ObservableObject {
         crossfeed = defaults.bool(forKey: "crossfeed")
         mono = defaults.bool(forKey: "mono")
         balance = (defaults.object(forKey: "balance") as? Double ?? 0).clamped(to: -1...1)
-        widening = defaults.integer(forKey: "widening").clamped(to: 0...4)
+        if let w = defaults.object(forKey: "stereoWidth") as? Double {
+            stereoWidth = w.clamped(to: OutputOptions.widthRange)
+            immersive = defaults.bool(forKey: "immersive")
+        } else {
+            (stereoWidth, immersive) = OutputOptions.migrate(widening: defaults.integer(forKey: "widening"))
+        }
         listeningDistance = (defaults.object(forKey: "listeningDistance") as? Int ?? 1).clamped(to: 0...2)
         hotkeysEnabled = defaults.object(forKey: "hotkeys") as? Bool ?? true
         notificationsEnabled = defaults.object(forKey: "notifications") as? Bool ?? true
@@ -607,7 +639,8 @@ final class EQModel: ObservableObject {
         guard let setting = deviceSettings[uid] else {
             // La correction d'un casque ne s'applique pas à un autre appareil, ni l'élargissement.
             correction = nil
-            widening = 0
+            stereoWidth = 1
+            immersive = false
             listeningDistance = 1
             return
         }
@@ -622,7 +655,12 @@ final class EQModel: ObservableObject {
         isModified = known ? setting.modified : false
         correction = setting.correction
         correctionEnabled = setting.correctionOn ?? true
-        widening = setting.widening ?? 0
+        if let w = setting.width {
+            stereoWidth = w.clamped(to: OutputOptions.widthRange)
+            immersive = setting.immersive ?? false
+        } else {
+            (stereoWidth, immersive) = OutputOptions.migrate(widening: setting.widening ?? 0)
+        }
         listeningDistance = setting.distance ?? 1
     }
 
@@ -800,7 +838,8 @@ final class EQModel: ObservableObject {
         defaults.set(limiterEnabled, forKey: "limiter")
         defaults.set(leveler, forKey: "leveler")
         defaults.set(crossfeed, forKey: "crossfeed")
-        defaults.set(widening, forKey: "widening")
+        defaults.set(stereoWidth, forKey: "stereoWidth")
+        defaults.set(immersive, forKey: "immersive")
         defaults.set(listeningDistance, forKey: "listeningDistance")
         defaults.set(mono, forKey: "mono")
         defaults.set(balance, forKey: "balance")
@@ -819,7 +858,7 @@ final class EQModel: ObservableObject {
                 preset: selectedPreset, modified: isModified,
                 mode: mode, filters: filters,
                 correction: correction, correctionOn: correctionEnabled,
-                widening: widening, distance: listeningDistance)
+                width: stereoWidth, immersive: immersive, distance: listeningDistance)
         }
         encode(deviceSettings, "deviceSettings")
     }

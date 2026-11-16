@@ -76,16 +76,24 @@ struct OutputOptions: Equatable {
     var mono = false
     /// −1 (tout à gauche) … 0 (centre) … +1 (tout à droite).
     var balance = 0.0
-    /// Élargissement stéréo (haut-parleurs proches, comme ceux d'un portable) :
-    /// 0 coupé, 1 léger, 2 moyen, 3 fort, 4 immersif (annulation de diaphonie).
-    var widening = 0
+    /// Largeur stéréo : 0 = mono, 1 = original, 2 = élargie au maximum.
+    var width = 1.0
+    /// Immersif : annulation de diaphonie, pour des haut-parleurs proches (portable).
+    var immersive = false
 
-    /// Niveau « Immersif » : annulation de diaphonie plutôt que simple renfort.
-    static let immersiveLevel = 4
-    /// Renfort des « côtés » (différence gauche − droite) pour Léger, Moyen, Fort (Immersif : aucun).
-    static let wideningAmounts = [0.0, 0.4, 0.8, 1.3, 0.0]
-    static var wideningNames: [String] {
-        [String(localized: "Coupé"), String(localized: "Léger"), String(localized: "Moyen"), String(localized: "Fort"), String(localized: "Immersif")]
+    static let widthRange = 0.0...2.0
+    /// À 200 %, renfort des « côtés » au-dessus de 200 Hz (la largeur maximale de l'ancien niveau « Fort »).
+    static let maxWidening = 1.3
+
+    /// Anciens niveaux d'élargissement (Coupé, Léger, Moyen, Fort, Immersif) → largeur et Immersif.
+    static func migrate(widening level: Int) -> (width: Double, immersive: Bool) {
+        switch level {
+        case 1: return (1 + 0.4 / maxWidening, false)
+        case 2: return (1 + 0.8 / maxWidening, false)
+        case 3: return (2, false)
+        case 4: return (1, true)
+        default: return (1, false)
+        }
     }
 
     /// Annulation de diaphonie : chaque oreille entend aussi le haut-parleur opposé, un peu plus tard.

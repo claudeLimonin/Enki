@@ -370,110 +370,147 @@ struct AppsPage: View {
 struct ListeningPage: View {
     @EnvironmentObject var model: EQModel
     @State private var calibrating = false
+    /// Largeur disponible, pour choisir une ou deux colonnes.
+    @State private var pageWidth: CGFloat = 0
 
-    /// Une colonne en fenêtre normale, deux sur grand écran.
-    private let columns = [GridItem(.adaptive(minimum: 380), spacing: 16, alignment: .top)]
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
-                ListeningCard(title: "Mode nuit",
-                              footer: "Abaisse les graves trop forts (explosions) et remonte les dialogues calmes, pour écouter à faible volume. Raccourci : ⌃⌥⌘N.") {
-                    Picker("Niveau", selection: $model.leveler) {
-                        ForEach(0..<OutputOptions.levelerNames.count, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+            // Deux colonnes indépendantes (pas de vide sous un bloc court), une seule si la fenêtre est étroite.
+            Group {
+                if pageWidth >= 820 {
+                    HStack(alignment: .top, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 18) { nightCard; outputCard; protectionCard }
+                            .frame(maxWidth: .infinity, alignment: .top)
+                        VStack(alignment: .leading, spacing: 18) { spatialCard; hearingCard }
+                            .frame(maxWidth: .infinity, alignment: .top)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-                ListeningCard(title: "Casque",
-                              footer: "Mélange légèrement les canaux gauche et droit, pour un son moins fatigant, plus proche d'enceintes.") {
-                    toggleRow("Spatialisation casque", isOn: $model.crossfeed)
-                }
-                ListeningCard(title: "Haut-parleurs",
-                              footer: "Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. La distance d'écoute ajuste l'effet. Mémorisé pour cette sortie.") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Élargissement stéréo")
-                            Spacer()
-                        }
-                        Picker("Élargissement stéréo", selection: $model.widening) {
-                            ForEach(0..<OutputOptions.wideningNames.count, id: \.self) { Text(OutputOptions.wideningNames[$0]).tag($0) }
-                        }
-                        .help("Léger à Fort : la stéréo est élargie. Immersif : le son semble sortir bien au-delà du Mac, à condition d'être assis face à l'écran, au centre.")
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        Divider().padding(.vertical, 2)
-                        HStack {
-                            Text("Distance d'écoute")
-                            Spacer()
-                            Text(OutputOptions.distanceHints[model.listeningDistance])
-                                .foregroundStyle(.secondary).monospacedDigit()
-                        }
-                        Picker("Distance d'écoute", selection: $model.listeningDistance) {
-                            ForEach(0..<OutputOptions.distanceNames.count, id: \.self) { Text(OutputOptions.distanceNames[$0]).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .help("Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué.")
-                        .disabled(model.widening == 0)
-                        // Mesure par la caméra : encadré mis en avant, pour qu'on le remarque.
-                        HStack(spacing: 10) {
-                            Image(systemName: "camera.viewfinder")
-                                .font(.title2)
-                                .foregroundStyle(Color.accentColor)
-                                .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Vous ne connaissez pas votre distance ?").fontWeight(.medium)
-                                Text("La caméra la mesure en 3 secondes, puis s'éteint.")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 8)
-                            Button("Mesurer…") { calibrating = true }
-                                .buttonStyle(.borderedProminent)
-                                .help("La caméra s'allume 3 secondes pour estimer votre distance, puis s'éteint.")
-                                .accessibilityLabel("Mesurer avec la caméra")
-                        }
-                        .padding(10)
-                        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor.opacity(0.25)))
-                        if model.widening == OutputOptions.immersiveLevel {
-                            Label("Immersif : placez-vous face à l'écran, au centre, à la distance choisie.", systemImage: "person.fill.viewfinder")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        if model.mono {
-                            Label("Choisir un niveau coupe le mono : en mono, il n'y a pas de stéréo à élargir.", systemImage: "info.circle")
-                                .font(.caption).foregroundStyle(.secondary)
-                        } else if !model.outputIsSpeakers {
-                            Label("La sortie actuelle semble être un casque : préférez la spatialisation casque.", systemImage: "headphones")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                ListeningCard(title: "Sortie",
-                              footer: "La balance déplace le son vers la gauche ou la droite : utile si une oreille entend moins bien, ou si vous n'êtes pas au centre des haut-parleurs.") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        toggleRow("Mono (même son des deux côtés)", isOn: $model.mono)
-                        Divider()
-                        BalanceControl(balance: $model.balance)
-                    }
-                }
-                ListeningCard(title: "Protection",
-                              footer: "Baisse le volume un court instant pour éviter la saturation. Avec le mode nuit, il agit rarement : c'est normal.") {
-                    toggleRow("Limiteur anti-saturation", isOn: $model.limiterEnabled)
-                }
-                ListeningCard(title: "Audition", footer: nil) {
-                    HStack {
-                        Text("Test auditif")
-                        Spacer()
-                        Button("Faire le test…") { HearingTestWindow.show(model: model) }
-                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 18) { nightCard; spatialCard; outputCard; protectionCard; hearingCard }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background(GeometryReader { g in
+                Color.clear
+                    .onAppear { pageWidth = g.size.width }
+                    .onChange(of: g.size.width) { _, w in pageWidth = w }
+            })
             .padding(20)
         }
         .navigationTitle("Écoute")
         .onAppear { model.refreshOutputKind() }
         .sheet(isPresented: $calibrating) { CalibrationSheet() }
+    }
+
+    private var nightCard: some View {
+        ListeningCard(title: "Mode nuit",
+                      footer: "Abaisse les graves trop forts (explosions) et remonte les dialogues calmes, pour écouter à faible volume. Raccourci : ⌃⌥⌘N.") {
+            Picker("Niveau", selection: $model.leveler) {
+                ForEach(0..<OutputOptions.levelerNames.count, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+    }
+
+    private var spatialCard: some View {
+        ListeningCard(title: "Spatialisation",
+                      footer: "Largeur, Immersif et distance sont mémorisés pour cette sortie.") {
+            VStack(alignment: .leading, spacing: 12) {
+                StereoWidthControl(width: $model.stereoWidth)
+                if model.mono {
+                    Label("Changer la largeur coupe le mono.", systemImage: "info.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Divider()
+                // Casque : chaque oreille reçoit un peu de l'autre canal.
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label("Effet enceintes au casque", systemImage: "headphones")
+                        Text("Mélange légèrement les canaux, pour un son moins fatigant, plus proche d'enceintes.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("Effet enceintes au casque", isOn: $model.crossfeed).toggleStyle(.switch).labelsHidden()
+                }
+                Divider()
+                // Haut-parleurs : annulation de diaphonie, réglée par la distance d'écoute.
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label("Immersif (haut-parleurs)", systemImage: "hifispeaker.2")
+                        Text("Le son semble sortir bien au-delà du Mac. Asseyez-vous face à l'écran, au centre.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("Immersif", isOn: $model.immersive).toggleStyle(.switch).labelsHidden()
+                }
+                if !model.outputIsSpeakers, model.immersive {
+                    Label("La sortie actuelle semble être un casque : l'Immersif est fait pour des haut-parleurs.", systemImage: "exclamationmark.circle")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                HStack {
+                    Text("Distance d'écoute")
+                    Spacer()
+                    Text(OutputOptions.distanceHints[model.listeningDistance])
+                        .foregroundStyle(.secondary).monospacedDigit()
+                }
+                Picker("Distance d'écoute", selection: $model.listeningDistance) {
+                    ForEach(0..<OutputOptions.distanceNames.count, id: \.self) { Text(OutputOptions.distanceNames[$0]).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .help("Distance entre vous et l'écran : règle l'Immersif et, au-delà de 100 %, l'intensité de l'élargissement.")
+                .disabled(!model.spatialActive)
+                // Mesure par la caméra : encadré mis en avant, pour qu'on le remarque.
+                HStack(spacing: 10) {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.title2)
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Vous ne connaissez pas votre distance ?").fontWeight(.medium)
+                        Text("La caméra la mesure en 3 secondes, puis s'éteint.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Mesurer…") { calibrating = true }
+                        .buttonStyle(.borderedProminent)
+                        .help("La caméra s'allume 3 secondes pour estimer votre distance, puis s'éteint.")
+                        .accessibilityLabel("Mesurer avec la caméra")
+                }
+                .padding(10)
+                .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor.opacity(0.25)))
+            }
+        }
+    }
+
+    private var outputCard: some View {
+        ListeningCard(title: "Sortie",
+                      footer: "La balance déplace le son vers la gauche ou la droite : utile si une oreille entend moins bien, ou si vous n'êtes pas au centre des haut-parleurs.") {
+            VStack(alignment: .leading, spacing: 12) {
+                toggleRow("Mono (même son des deux côtés)", isOn: $model.mono)
+                Divider()
+                BalanceControl(balance: $model.balance)
+            }
+        }
+    }
+
+    private var protectionCard: some View {
+        ListeningCard(title: "Protection",
+                      footer: "Baisse le volume un court instant pour éviter la saturation. Avec le mode nuit, il agit rarement : c'est normal.") {
+            toggleRow("Limiteur anti-saturation", isOn: $model.limiterEnabled)
+        }
+    }
+
+    private var hearingCard: some View {
+        ListeningCard(title: "Audition", footer: nil) {
+            HStack {
+                Text("Test auditif")
+                Spacer()
+                Button("Faire le test…") { HearingTestWindow.show(model: model) }
+            }
+        }
     }
 
     /// Libellé à gauche, interrupteur à droite.
@@ -546,5 +583,90 @@ struct BalanceControl: View {
                 Image(systemName: "r.circle").foregroundStyle(.secondary).accessibilityHidden(true)
             }
         }
+    }
+}
+
+/// Largeur stéréo : pourcentage, curseur Mono · Original · Élargi, illustration et message.
+struct StereoWidthControl: View {
+    @Binding var width: Double
+
+    private var percent: Int { Int((width * 100).rounded()) }
+
+    private var message: String {
+        switch percent {
+        case 0: return String(localized: "Son replié en mono.")
+        case ..<100: return String(localized: "Image stéréo resserrée.")
+        case 100: return String(localized: "Largeur d'origine.")
+        case ..<170: return String(localized: "Image stéréo élargie : les voix restent au centre.")
+        default: return String(localized: "Élargissement important : le son peut paraître moins naturel, surtout en mono.")
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Largeur stéréo").fontWeight(.semibold)
+                Spacer()
+                Text("\(percent) %")
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            Slider(value: Binding(
+                get: { width },
+                // Aimanté à 100 % : on retrouve facilement la largeur d'origine.
+                set: { v in width = abs(v - 1) < 0.04 ? 1 : (v * 20).rounded() / 20 }),
+                   in: OutputOptions.widthRange)
+                .accessibilityLabel("Largeur stéréo")
+                .accessibilityValue("\(percent) %")
+            HStack {
+                Button("Mono") { width = 0 }
+                Spacer()
+                Button("Original") { width = 1 }
+                Spacer()
+                Button("Élargi") { width = 2 }
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            StereoWidthIllustration(width: width)
+                .frame(height: 150)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(percent >= 170 ? Color.orange : Color.secondary)
+        }
+    }
+}
+
+/// Illustration de la largeur : ellipses concentriques qui s'étirent avec la largeur (non mesurée sur le son).
+struct StereoWidthIllustration: View {
+    let width: Double
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Canvas { ctx, size in
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                var axis = Path()
+                axis.move(to: CGPoint(x: center.x, y: 6))
+                axis.addLine(to: CGPoint(x: center.x, y: size.height - 6))
+                ctx.stroke(axis, with: .color(.secondary.opacity(0.45)), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                let w = CGFloat(width)
+                let rx = size.width * 0.21 * w, ry = min(size.height * 0.24 * (0.55 + 0.45 * w), size.height / 2 - 4)
+                let colors: [Color] = [.purple, .cyan, .purple, .cyan, .purple]
+                for (i, f) in [1.0, 0.84, 0.68, 0.52, 0.36].enumerated() where w > 0.01 {
+                    let rect = CGRect(x: center.x - rx * f, y: center.y - ry * f, width: 2 * rx * f, height: 2 * ry * f)
+                    ctx.stroke(Path(ellipseIn: rect), with: .color(colors[i].opacity(0.9 - Double(i) * 0.13)), lineWidth: 2)
+                }
+                ctx.fill(Path(ellipseIn: CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)), with: .color(.purple))
+                ctx.draw(Text("G").font(.headline), at: CGPoint(x: 18, y: size.height - 16))
+                ctx.draw(Text("D").font(.headline), at: CGPoint(x: size.width - 18, y: size.height - 16))
+            }
+            .animation(.easeOut(duration: 0.15), value: width)
+            Text("Illustration de la largeur stéréo, non mesurée sur le son.")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityHidden(true)
     }
 }

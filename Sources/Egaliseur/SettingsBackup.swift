@@ -9,7 +9,7 @@ enum SettingsBackup {
     static let keys = [
         "gains", "preamp", "mode", "filters", "enabled", "preset", "modified",
         "userPresets", "perDevice", "limiter", "correction", "correctionOn",
-        "appRules", "deviceSettings", "tourCompleted", "leveler", "crossfeed", "widening", "listeningDistance", "mono", "balance", "hotkeys", "notifications", "autoUpdateCheck", "skippedVersion",
+        "appRules", "deviceSettings", "tourCompleted", "leveler", "crossfeed", "widening", "stereoWidth", "immersive", "listeningDistance", "mono", "balance", "hotkeys", "notifications", "autoUpdateCheck", "skippedVersion",
     ]
     private static let format = "Egaliseur"
     private static let version = 1

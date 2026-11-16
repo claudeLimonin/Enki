@@ -116,11 +116,13 @@ struct QuickView: View {
             ControlTile(title: String(localized: "Mode nuit"), symbol: "moon.fill",
                         detail: model.leveler > 0 ? OutputOptions.levelerNames[model.leveler] : String(localized: "Désactivé"),
                         isOn: model.leveler > 0) { model.toggleLevelerFromShortcut() }
-            // Haut-parleurs : élargissement stéréo. Casque : spatialisation.
+            // Haut-parleurs : largeur stéréo (et Immersif). Casque : effet enceintes.
             if model.outputIsSpeakers {
-                ControlTile(title: String(localized: "Élargissement"), symbol: "arrow.left.and.right",
-                            detail: model.widening > 0 ? OutputOptions.wideningNames[model.widening] : String(localized: "Désactivé"),
-                            isOn: model.widening > 0) { model.toggleWidening() }
+                ControlTile(title: String(localized: "Largeur"), symbol: "arrow.left.and.right",
+                            detail: model.spatialActive
+                                ? "\(Int((model.stereoWidth * 100).rounded())) %" + (model.immersive ? " · " + String(localized: "Immersif") : "")
+                                : String(localized: "Originale"),
+                            isOn: model.spatialActive) { model.toggleSpatial() }
             } else {
                 ControlTile(title: String(localized: "Spatialisation"), symbol: "headphones",
                             detail: model.crossfeed ? String(localized: "Casque") : String(localized: "Désactivée"),
