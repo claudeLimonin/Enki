@@ -271,4 +271,4 @@
 
 "Ce fichier n'est pas une sauvegarde d'Enki Audio." = "This file is not an Enki Audio backup.";
 "Ce fichier n'est pas un préréglage d'Enki Audio." = "This file is not an Enki Audio preset.";
-"Mode nuit (%@) : %@ dB" = "Night mode (%@): %@ dB";
+"Mode nuit (%@) · graves %@ · voix %@ · aigus %@ dB" = "Night mode (%@) · bass %@ · voice %@ · treble %@ dB";

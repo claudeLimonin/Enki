@@ -271,9 +271,63 @@ private final class FilterChain {
 }
 
 /// Coefficients des traitements de sortie, calculés hors du thread audio.
+/// Biquad minimal pour les filtres de séparation du mode nuit.
+struct BQ {
+    var b0 = 1.0, b1 = 0.0, b2 = 0.0, a1 = 0.0, a2 = 0.0
+
+    /// Butterworth 2e ordre (Q = 1/√2) ; deux en série donnent un Linkwitz-Riley 4e ordre.
+    static func butterworth(lowpass: Bool, frequency: Double, sampleRate: Double) -> BQ {
+        let w0 = 2 * Double.pi * frequency / sampleRate
+        let alpha = sin(w0) / (2 * 0.5.squareRoot())
+        let c = cos(w0), a0 = 1 + alpha
+        let k = lowpass ? (1 - c) / 2 : (1 + c) / 2
+        return BQ(b0: k / a0, b1: (lowpass ? 1 - c : -(1 + c)) / a0, b2: k / a0,
+                  a1: -2 * c / a0, a2: (1 - alpha) / a0)
+    }
+}
+
+struct BQState {
+    var s1 = 0.0, s2 = 0.0
+    @inline(__always) mutating func run(_ x: Double, _ k: BQ) -> Double {
+        let y = k.b0 * x + s1
+        s1 = k.b1 * x - k.a1 * y + s2
+        s2 = k.b2 * x - k.a2 * y
+        return y
+    }
+}
+
+/// Séparation en 3 bandes (graves / voix / aigus) dont la somme redonne le signal d'origine.
+struct Crossover3 {
+    struct Coefs { var lp1 = BQ(), hp1 = BQ(), lp2 = BQ(), hp2 = BQ() }
+    private var l1a = BQState(), l1b = BQState(), h1a = BQState(), h1b = BQState()
+    private var l2a = BQState(), l2b = BQState(), h2a = BQState(), h2b = BQState()
+    private var apla = BQState(), aplb = BQState(), apha = BQState(), aphb = BQState()
+
+    static func coefs(_ f1: Double, _ f2: Double, sampleRate: Double) -> Coefs {
+        Coefs(lp1: .butterworth(lowpass: true, frequency: f1, sampleRate: sampleRate),
+              hp1: .butterworth(lowpass: false, frequency: f1, sampleRate: sampleRate),
+              lp2: .butterworth(lowpass: true, frequency: f2, sampleRate: sampleRate),
+              hp2: .butterworth(lowpass: false, frequency: f2, sampleRate: sampleRate))
+    }
+
+    @inline(__always) mutating func split(_ x: Double, _ c: Coefs) -> (low: Double, mid: Double, high: Double) {
+        let low0 = l1b.run(l1a.run(x, c.lp1), c.lp1)
+        let rest = h1b.run(h1a.run(x, c.hp1), c.hp1)
+        let mid = l2b.run(l2a.run(rest, c.lp2), c.lp2)
+        let high = h2b.run(h2a.run(rest, c.hp2), c.hp2)
+        // Les graves passent par le même déphasage que le reste (passe-tout à f2) : somme sans creux.
+        let low = aplb.run(apla.run(low0, c.lp2), c.lp2) + aphb.run(apha.run(low0, c.hp2), c.hp2)
+        return (low, mid, high)
+    }
+
+    mutating func reset() { self = Crossover3() }
+}
+
 private struct OutputDSP {
     var leveler = false
-    var threshold = -24.0, ratio = 3.0, makeup = 6.0
+    /// Par bande (graves, voix, aigus) : seuil (dBFS), taux de compression, remontée (dB).
+    var bands = [NightBand](repeating: NightBand(), count: 3)
+    var xover = Crossover3.Coefs()
     var attack = 0.0, release = 0.0
     var crossfeed = false
     var crossCoef = 0.0, crossMix = 0.0, crossNorm = 1.0
@@ -283,10 +337,10 @@ private struct OutputDSP {
     init() {}
 
     init(_ o: OutputOptions, sampleRate: Double) {
-        let presets: [(threshold: Double, ratio: Double, makeup: Double)] = [(-18, 2, 4), (-24, 3, 7), (-30, 4, 10)]
         if (1...3).contains(o.leveler) {
             leveler = true
-            (threshold, ratio, makeup) = presets[o.leveler - 1]
+            bands = OutputOptions.nightBands[o.leveler - 1]
+            xover = Crossover3.coefs(OutputOptions.nightCrossovers.0, OutputOptions.nightCrossovers.1, sampleRate: sampleRate)
         }
         attack = 1 - exp(-1 / (0.010 * sampleRate))   // 10 ms
         release = 1 - exp(-1 / (0.300 * sampleRate))  // 300 ms
@@ -334,7 +388,8 @@ final class EQProcessor {
     private var activeOut = OutputDSP()
     private var pendingOut = OutputDSP()
     // États des traitements de sortie.
-    private var levelEnv = 0.0
+    private var levelEnv = (0.0, 0.0, 0.0)
+    private var xoverL = Crossover3(), xoverR = Crossover3()
     private var crossLP = (0.0, 0.0)
     private var dirty = false
     private var resetRequested = false
@@ -347,8 +402,8 @@ final class EQProcessor {
         lock.initialize(to: os_unfair_lock())
         meter = .allocate(capacity: 1)
         meter.initialize(to: 1)
-        levelMeter = .allocate(capacity: 1)
-        levelMeter.initialize(to: .nan)
+        levelMeter = .allocate(capacity: 3)
+        levelMeter.initialize(repeating: .nan, count: 3)
         scope = .allocate(capacity: Self.scopeSize)
         scope.initialize(repeating: 0, count: Self.scopeSize)
         scopeWritten = .allocate(capacity: 1)
@@ -400,10 +455,11 @@ final class EQProcessor {
 
     /// Thread principal : plus petit gain appliqué par le limiteur depuis le dernier appel
     /// (1 = aucune réduction ; < 1 aussi en cas de saturation, limiteur coupé). Remet à zéro.
-    /// Thread principal : gain actuel du volume nivelé (dB), nil s'il est coupé.
-    func levelerGainDB() -> Float? {
-        let v = levelMeter.pointee
-        return v.isNaN ? nil : v
+    /// Thread principal : gain actuel du volume nivelé pour chaque bande (graves, voix, aigus), en dB ;
+    /// nil s'il est coupé.
+    func levelerGainsDB() -> [Float]? {
+        let v = [levelMeter[0], levelMeter[1], levelMeter[2]]
+        return v.contains { $0.isNaN } ? nil : v
     }
 
     func takeLimiterGain() -> Float {
@@ -447,7 +503,9 @@ final class EQProcessor {
                 for s in sources { s.resetState() }
                 post.resetState()
                 limiterGain = 1
-                levelEnv = 0
+                levelEnv = (0, 0, 0)
+                xoverL.reset()
+                xoverR.reset()
                 crossLP = (0, 0)
                 resetRequested = false
             }
@@ -488,7 +546,7 @@ final class EQProcessor {
         var minGain = 1.0
         let o = activeOut
         var env = levelEnv
-        var levelDB = 0.0
+        var levelDB = (0.0, 0.0, 0.0)
         var (lpL, lpR) = crossLP
         var written = scopeWritten.pointee
         let scopeMask = Self.scopeSize - 1
@@ -518,19 +576,25 @@ final class EQProcessor {
             l *= o.gainL
             r *= o.gainR
 
-            // Volume nivelé : compresseur doux lié stéréo, puis remontée du niveau général.
+            // Mode nuit : 3 bandes compressées séparément (liées stéréo).
+            // Graves forts fortement réduits (explosions), voix calmes un peu remontées.
             // Le limiteur, juste après, rattrape les éventuels dépassements.
             if o.leveler {
-                let x = max(abs(l), abs(r))
-                env += (x - env) * (x > env ? o.attack : o.release)
-                let envDB = 20 * log10(env + 1e-9)
-                var gainDB = envDB > o.threshold ? (o.threshold - envDB) * (1 - 1 / o.ratio) : 0
-                // Pas de remontée sur le silence (on n'amplifie pas le souffle).
-                gainDB += o.makeup * min(max((envDB + 70) / 20, 0), 1)
-                levelDB = gainDB
-                let lg = pow(10, gainDB / 20)
-                l *= lg
-                r *= lg
+                let a = xoverL.split(l, o.xover), b = xoverR.split(r, o.xover)
+                @inline(__always) func gain(_ x: Double, _ e: inout Double, _ band: NightBand, _ out: inout Double) -> Double {
+                    e += (x - e) * (x > e ? o.attack : o.release)
+                    let envDB = 20 * log10(e + 1e-9)
+                    var g = envDB > band.threshold ? (band.threshold - envDB) * (1 - 1 / band.ratio) : 0
+                    // Pas de remontée sur le silence (on n'amplifie pas le souffle).
+                    g += band.makeup * min(max((envDB + 70) / 20, 0), 1)
+                    out = g
+                    return pow(10, g / 20)
+                }
+                let g0 = gain(max(abs(a.low), abs(b.low)), &env.0, o.bands[0], &levelDB.0)
+                let g1 = gain(max(abs(a.mid), abs(b.mid)), &env.1, o.bands[1], &levelDB.1)
+                let g2 = gain(max(abs(a.high), abs(b.high)), &env.2, o.bands[2], &levelDB.2)
+                l = a.low * g0 + a.mid * g1 + a.high * g2
+                r = b.low * g0 + b.mid * g1 + b.high * g2
             }
 
             // Limiteur lié stéréo : réduction instantanée à la crête, retour progressif.
@@ -560,8 +624,10 @@ final class EQProcessor {
             g = 1
         }
         limiterGain = g
-        levelEnv = env.isFinite ? env : 0
-        levelMeter.pointee = o.leveler && levelDB.isFinite ? Float(levelDB) : .nan
+        levelEnv = env.0.isFinite && env.1.isFinite && env.2.isFinite ? env : (0, 0, 0)
+        levelMeter[0] = o.leveler ? Float(levelDB.0) : .nan
+        levelMeter[1] = o.leveler ? Float(levelDB.1) : .nan
+        levelMeter[2] = o.leveler ? Float(levelDB.2) : .nan
         crossLP = lpL.isFinite && lpR.isFinite ? (lpL, lpR) : (0, 0)
         let m = Float(minGain)
         if m < meter.pointee { meter.pointee = m }

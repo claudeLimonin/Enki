@@ -77,7 +77,37 @@ struct OutputOptions: Equatable {
     /// −1 (tout à gauche) … 0 (centre) … +1 (tout à droite).
     var balance = 0.0
 
+    /// Fréquences de séparation du mode nuit : graves | voix | aigus.
+    static let nightCrossovers = (200.0, 4000.0)
+
+    /// Réglages des 3 bandes pour Léger, Moyen, Fort.
+    /// Graves : réduits quand ils sont forts, jamais remontés. Voix : remontées sur les passages calmes.
+    static let nightBands: [[NightBand]] = [
+        [NightBand(threshold: -28, ratio: 2, makeup: 0), NightBand(threshold: -24, ratio: 2, makeup: 2), NightBand(threshold: -26, ratio: 2, makeup: 0)],
+        [NightBand(threshold: -32, ratio: 3, makeup: 0), NightBand(threshold: -28, ratio: 2.5, makeup: 4), NightBand(threshold: -30, ratio: 2.5, makeup: 1)],
+        [NightBand(threshold: -36, ratio: 4, makeup: 0), NightBand(threshold: -32, ratio: 3, makeup: 6), NightBand(threshold: -34, ratio: 3, makeup: 2)],
+    ]
+
+    /// Effet du mode nuit (dB) à une fréquence, d'après le gain actuel des 3 bandes :
+    /// mélange pondéré par la part de chaque bande à cette fréquence (filtres de séparation).
+    static func nightOffsetDB(at f: Double, gains: [Double]) -> Double {
+        guard gains.count == 3 else { return 0 }
+        let (f1, f2) = nightCrossovers
+        let wLow = 1 / (1 + pow(f / f1, 4))
+        let wHigh = pow(f / f2, 4) / (1 + pow(f / f2, 4))
+        let wMid = max(0, 1 - wLow - wHigh)
+        let lin = wLow * pow(10, gains[0] / 20) + wMid * pow(10, gains[1] / 20) + wHigh * pow(10, gains[2] / 20)
+        return 20 * log10(max(lin, 1e-6))
+    }
+
     static var levelerNames: [String] {
         [String(localized: "Coupé"), String(localized: "Léger"), String(localized: "Moyen"), String(localized: "Fort")]
     }
+}
+
+/// Réglage d'une bande du mode nuit.
+struct NightBand: Equatable {
+    var threshold = -30.0
+    var ratio = 2.0
+    var makeup = 0.0
 }

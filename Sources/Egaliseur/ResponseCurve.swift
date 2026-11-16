@@ -56,7 +56,7 @@ struct ResponseCurve: View {
     var onAdd: ((Double, Double) -> Void)? = nil
     var onDragEnd: (() -> Void)? = nil
     /// Effet actuel du volume nivelé (dB) et nom de son niveau ; nil s'il est coupé.
-    var levelerDB: Double? = nil
+    var levelerDB: [Double]? = nil
     var levelerName = ""
 
     @Environment(\.colorScheme) private var colorScheme
@@ -251,27 +251,40 @@ struct ResponseCurve: View {
             ctx.stroke(main, with: .color(halo), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             ctx.stroke(main, with: .color(color), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
-            // Volume nivelé (mode nuit) : la même courbe, décalée du gain appliqué en ce moment.
-            // Elle monte sur les passages calmes et descend sur les passages forts.
-            if let lv = levelerDB {
+            // Mode nuit : effet actuel à chaque fréquence (3 bandes : graves, voix, aigus), ajouté à la courbe.
+            // Bleu : fréquences abaissées en ce moment ; orange : fréquences renforcées.
+            if let gains = levelerDB, gains.count == 3 {
                 let night = Color(red: 0.42, green: 0.45, blue: 1.0)
+                let lowered = Color(red: 0.30, green: 0.45, blue: 1.0)
+                let raised = Color(red: 1.0, green: 0.55, blue: 0.15)
                 let eq = EQMath.chain(settings, sampleRate: sampleRate)
-                func pt(_ i: Int, _ extra: Double) -> CGPoint {
+                var base: [CGPoint] = [], shifted: [CGPoint] = [], offsets: [Double] = []
+                for i in 0...steps {
                     let t = Double(i) / Double(steps)
                     let f = Self.fMin * pow(Self.fMax / Self.fMin, t)
-                    let db = eq.reduce(0) { $0 + EQMath.magnitudeDB($1, at: f, sampleRate: sampleRate) } + extra
-                    return CGPoint(x: t * w, y: y(db.clamped(to: -dbMax...dbMax), h))
+                    let db = eq.reduce(0) { $0 + EQMath.magnitudeDB($1, at: f, sampleRate: sampleRate) }
+                    let off = OutputOptions.nightOffsetDB(at: f, gains: gains)
+                    base.append(CGPoint(x: t * w, y: y(db.clamped(to: -dbMax...dbMax), h)))
+                    shifted.append(CGPoint(x: t * w, y: y((db + off).clamped(to: -dbMax...dbMax), h)))
+                    offsets.append(off)
                 }
-                var shifted = Path(), band = Path()
-                for i in 0...steps { i == 0 ? shifted.move(to: pt(i, lv)) : shifted.addLine(to: pt(i, lv)) }
-                band.addPath(shifted)
-                for i in stride(from: steps, through: 0, by: -1) { band.addLine(to: pt(i, 0)) }
-                band.closeSubpath()
-                ctx.fill(band, with: .color(night.opacity(dark ? 0.22 : 0.16)))
-                ctx.stroke(shifted, with: .color(night), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [5, 3]))
-                let value = String(format: "%+.1f", lv).replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ",")
+                // Zone entre les deux courbes, colorée tranche par tranche selon le sens de l'effet.
+                for i in 0..<steps {
+                    let off = (offsets[i] + offsets[i + 1]) / 2
+                    guard abs(off) > 0.05 else { continue }
+                    var q = Path()
+                    q.move(to: base[i]); q.addLine(to: base[i + 1]); q.addLine(to: shifted[i + 1]); q.addLine(to: shifted[i]); q.closeSubpath()
+                    ctx.fill(q, with: .color((off < 0 ? lowered : raised).opacity(dark ? 0.32 : 0.24)))
+                }
+                var line = Path()
+                line.addLines(shifted)
+                ctx.stroke(line, with: .color(night), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [5, 3]))
+
+                func fmt(_ v: Double) -> String {
+                    String(format: "%+.1f", v).replacingOccurrences(of: ".", with: Locale.current.decimalSeparator ?? ",")
+                }
                 // Étiquette sur un fond, pour rester lisible par-dessus les repères et le spectre.
-                let label = ctx.resolve(Text("☾ " + String(localized: "Mode nuit (\(levelerName)) : \(value) dB"))
+                let label = ctx.resolve(Text("☾ " + String(localized: "Mode nuit (\(levelerName)) · graves \(fmt(gains[0])) · voix \(fmt(gains[1])) · aigus \(fmt(gains[2])) dB"))
                     .font(.system(size: 10, weight: .semibold)).foregroundColor(night))
                 let size = label.measure(in: CGSize(width: w, height: 20))
                 let origin = CGPoint(x: 6, y: correction.isEmpty ? 5 : 19)
