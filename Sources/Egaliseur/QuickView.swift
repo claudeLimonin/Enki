@@ -77,8 +77,8 @@ struct QuickView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(model.currentDevice?.name ?? String(localized: "Aucune sortie")).fontWeight(.semibold).lineLimit(1)
                     Text(model.correction != nil && model.correctionEnabled
-                         ? String(localized: "Correction de casque activée")
-                         : String(localized: "Sans correction de casque"))
+                         ? String(localized: "Correction activée")
+                         : String(localized: "Sans correction"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -91,7 +91,7 @@ struct QuickView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Sortie actuelle : chaque sortie garde son propre réglage. Cliquez pour la correction de casque.")
+        .help("Sortie actuelle : chaque sortie garde son propre réglage. Cliquez pour la corriger.")
     }
 
     private var presetRow: some View {

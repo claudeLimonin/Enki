@@ -253,7 +253,7 @@ struct EqualizerPage: View {
     private var displayMenu: some View {
         Menu {
             Toggle("Spectre en direct", isOn: $model.showSpectrum)
-            Toggle("Correction de casque", isOn: $model.showCorrectionLayer)
+            Toggle("Correction de la sortie", isOn: $model.showCorrectionLayer)
                 .disabled(model.correction == nil)
         } label: {
             Label("Afficher", systemImage: "eye")
@@ -391,7 +391,7 @@ struct EqualizerPage: View {
             case .main:
                 return String(localized: "\(app.name) suit l'égaliseur principal. Choisissez un préréglage ci-dessus pour lui donner son propre réglage.")
             case .bypass:
-                return String(localized: "\(app.name) n'est pas égalisée. La correction de casque, le mode nuit et le limiteur s'appliquent quand même.")
+                return String(localized: "\(app.name) n'est pas égalisée. La correction de la sortie audio, le mode nuit et le limiteur s'appliquent quand même.")
             case .preset(let name):
                 return String(localized: "\(app.name) utilise le préréglage « \(model.display(name)) ». Pour un réglage sur mesure : réglez les curseurs dans « Toutes les applications », enregistrez-les comme préréglage, puis choisissez-le ici.")
             }

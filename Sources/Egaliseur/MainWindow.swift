@@ -10,7 +10,7 @@ enum MainSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .equalizer: return String(localized: "Égaliseur")
-        case .headphones: return String(localized: "Casque")
+        case .headphones: return String(localized: "Sortie audio")
         case .apps: return String(localized: "Applications")
         case .listening: return String(localized: "Écoute")
         }
@@ -19,7 +19,7 @@ enum MainSection: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .equalizer: return "slider.vertical.3"
-        case .headphones: return "headphones"
+        case .headphones: return "hifispeaker.2"
         case .apps: return "square.grid.2x2"
         case .listening: return "ear"
         }
@@ -161,7 +161,7 @@ struct MainView: View {
             Text("Sortie").font(.caption).foregroundStyle(.secondary)
             Text(model.currentDevice?.name ?? String(localized: "Aucune sortie")).fontWeight(.semibold).lineLimit(1)
             Text(model.correction != nil && model.correctionEnabled
-                 ? String(localized: "Correction de casque activée") : String(localized: "Sans correction de casque"))
+                 ? String(localized: "Correction activée") : String(localized: "Sans correction"))
                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

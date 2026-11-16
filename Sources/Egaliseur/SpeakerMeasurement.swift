@@ -209,8 +209,16 @@ struct MeasurementSheet: View {
         .onDisappear { measure.cancel() }
         // Chaque mesure réussie rejoint l'historique, qu'elle soit appliquée ou non.
         .onChange(of: measure.state) { _, state in
-            if case .done(_, let snr, let correction) = state { model.addMeasurement(correction, snr: snr) }
+            switch state {
+            case .done(_, let snr, let correction):
+                model.addMeasurement(correction, snr: snr)
+                // On entend tout de suite la correction proposée (« Après »).
+                model.correctionAudition = .preview(correction)
+            default:
+                model.correctionAudition = .normal
+            }
         }
+        .onDisappear { model.correctionAudition = .normal }
     }
 
     @ViewBuilder private var buttons: some View {
@@ -275,6 +283,13 @@ struct MeasurementSheet: View {
         case .done(let levels, let snr, let correction):
             MeasurementChart(levels: levels, correction: correction)
                 .frame(height: 200)
+            HStack(spacing: 10) {
+                Text("Écouter :")
+                BeforeAfterPicker(after: Binding(
+                    get: { if case .preview = model.correctionAudition { return true } else { return false } },
+                    set: { model.correctionAudition = $0 ? .preview(correction) : .without }))
+                Text(previewHint).font(.caption).foregroundStyle(.secondary)
+            }
             HStack(spacing: 14) {
                 legend(.orange, false, "Mesuré")
                 legend(.purple, true, "Correction")
@@ -284,7 +299,7 @@ struct MeasurementSheet: View {
             Text("\(correction.filters.count) filtres, prudents : les pics sont baissés, les creux à peine remontés. Qualité de la mesure : \(Int(snr)) dB au-dessus du bruit.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("La correction est mémorisée pour « \(outputName) » et se règle ensuite comme une correction de casque. Cette mesure est aussi gardée dans l'historique de la page Casque.")
+            Text("La correction est mémorisée pour « \(outputName) » et se règle ensuite dans la page Sortie audio, où cette mesure est aussi gardée dans l'historique.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         case .failed(let message):
@@ -294,6 +309,13 @@ struct MeasurementSheet: View {
             Text("Enki Audio n'a pas accès au micro. Autorisez-le dans Réglages Système → Confidentialité et sécurité → Micro.")
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var previewHint: String {
+        if case .preview = model.correctionAudition {
+            return String(localized: "Vous entendez la nouvelle correction (pas encore appliquée).")
+        }
+        return String(localized: "Vous entendez vos haut-parleurs sans correction.")
     }
 
     private func step(_ n: Int, _ text: LocalizedStringKey) -> some View {

@@ -260,6 +260,17 @@ final class EQModel: ObservableObject {
     /// sans redémarrer le moteur. Jamais enregistré.
     @Published var comparing = false { didSet { if comparing != oldValue { push() } } }
 
+    /// Écoute « avant / après » de la correction (temporaire, jamais enregistrée).
+    enum CorrectionAudition: Equatable {
+        /// Correction en cours, comme d'habitude.
+        case normal
+        /// Avant : sans aucune correction.
+        case without
+        /// Après : avec une correction proposée, pas encore appliquée (assistant de mesure).
+        case preview(HeadphoneProfile)
+    }
+    @Published var correctionAudition: CorrectionAudition = .normal { didSet { if correctionAudition != oldValue { push() } } }
+
     /// Calques affichés sur le graphique de la fenêtre.
     @Published var showSpectrum: Bool { didSet { if showSpectrum != oldValue { save() } } }
     @Published var showCorrectionLayer: Bool { didSet { if showCorrectionLayer != oldValue { save() } } }
@@ -808,7 +819,14 @@ final class EQModel: ObservableObject {
             }
         }
         var post = ChainConfig.neutral
-        if correctionEnabled, let c = correction {
+        let active: HeadphoneProfile? = {
+            switch correctionAudition {
+            case .normal: return correctionEnabled ? correction : nil
+            case .without: return nil
+            case .preview(let p): return p
+            }
+        }()
+        if let c = active {
             post = ChainConfig(filters: c.filters.map { EQMath.coefficients($0, sampleRate: rate) }, preampDB: c.preamp)
         }
         if comparing {

@@ -318,7 +318,7 @@ struct ResponseCurve: View {
 
             // Légende de la correction.
             if !correction.isEmpty && !compact {
-                ctx.draw(Text("Correction casque").font(.system(size: 9, weight: .medium))
+                ctx.draw(Text("Correction").font(.system(size: 9, weight: .medium))
                             .foregroundColor(Color.purple.opacity(0.9)),
                          at: CGPoint(x: 6, y: 5), anchor: .topLeading)
             }

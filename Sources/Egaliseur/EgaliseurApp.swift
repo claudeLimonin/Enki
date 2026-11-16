@@ -133,7 +133,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         let open = action(String(localized: "Ouvrir Enki Audio")) { _ in MainWindowController.shared.show() }
         menu.addItem(open)
-        menu.addItem(action(String(localized: "Correction de casque…")) { _ in MainWindowController.shared.show(.headphones) })
+        menu.addItem(action(String(localized: "Sortie audio et correction…")) { _ in MainWindowController.shared.show(.headphones) })
         let settings = action(String(localized: "Réglages…")) { _ in SettingsWindowController.shared.show() }
         settings.keyEquivalent = ","
         menu.addItem(settings)

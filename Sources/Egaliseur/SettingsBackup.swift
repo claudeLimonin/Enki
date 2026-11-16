@@ -39,7 +39,7 @@ enum SettingsBackup {
     static func export() {
         let panel = NSSavePanel()
         panel.title = String(localized: "Sauvegarder les réglages")
-        panel.message = String(localized: "Préréglages, correction de casque, réglages par sortie et par application.")
+        panel.message = String(localized: "Préréglages, corrections, réglages par sortie et par application.")
         panel.nameFieldStringValue = String(localized: "Réglages Enki Audio") + ".egaliseur"
         panel.allowedContentTypes = [fileType]
         NSApp.activate(ignoringOtherApps: true)

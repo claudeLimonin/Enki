@@ -34,7 +34,7 @@ final class Tour: ObservableObject {
                  tryIt: String(localized: "Essayez : coupez puis rallumez pour comparer avec le son d'origine.")),
         TourStep(id: 2, anchor: .output,
                  title: String(localized: "Votre sortie audio"),
-                 text: String(localized: "Casque, haut-parleurs… chaque sortie garde son propre réglage. Cliquez ici pour choisir la correction de votre casque parmi plus de 8 000 profils mesurés.")),
+                 text: String(localized: "Casque, haut-parleurs… chaque sortie garde son propre réglage. Cliquez ici pour la corriger : profil mesuré de votre casque (plus de 8 000) ou mesure de vos haut-parleurs avec l'iPhone.")),
         TourStep(id: 3, anchor: .preset,
                  title: String(localized: "Les préréglages"),
                  text: String(localized: "Choisissez un réglage tout prêt (Rock, Voix, Basses renforcées…). Vous pourrez enregistrer les vôtres depuis la fenêtre."),
@@ -47,7 +47,7 @@ final class Tour: ObservableObject {
                  text: String(localized: "Mode nuit pour écouter bas sans perdre les dialogues, spatialisation pour le casque, limiteur contre la saturation (orange quand il agit), mono. Un clic suffit.")),
         TourStep(id: 6, anchor: .window,
                  title: String(localized: "Aller plus loin"),
-                 text: String(localized: "La fenêtre Enki Audio (⌃⌥⌘O) donne accès à l'égaliseur complet, au mode paramétrique, à la correction de casque et au réglage par application. Les Réglages (⌘,) gardent les options et ce guide.")),
+                 text: String(localized: "La fenêtre Enki Audio (⌃⌥⌘O) donne accès à l'égaliseur complet, au mode paramétrique, à la correction de la sortie audio (casque ou haut-parleurs) et au réglage par application. Les Réglages (⌘,) gardent les options et ce guide.")),
     ]
 
     var step: TourStep? { index.map { Self.steps[$0] } }

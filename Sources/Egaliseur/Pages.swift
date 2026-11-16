@@ -15,19 +15,23 @@ struct HeadphonesPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 outputCard
                 VStack(alignment: .leading, spacing: 8) {
-                    // Légende à droite du titre, ou dessous si la colonne est étroite.
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 16) {
-                            Text("Avant / après").fontWeight(.semibold).fixedSize()
-                            Spacer()
-                            legends
+                    // Titre et bouton Avant | Après : écouter sans puis avec la correction (le reste du réglage ne change pas).
+                    HStack(spacing: 10) {
+                        Text("Avant / après").fontWeight(.semibold)
+                        BeforeAfterPicker(after: Binding(
+                            get: { model.correctionAudition != .without },
+                            set: { model.correctionAudition = $0 ? .normal : .without }))
+                            .disabled(model.correction == nil || !model.correctionEnabled)
+                        if model.correctionAudition == .without {
+                            Label("Vous écoutez sans la correction", systemImage: "ear")
+                                .font(.caption.weight(.medium)).foregroundStyle(.orange)
+                        } else if model.correction != nil, model.correctionEnabled {
+                            Text("Basculez pour entendre la différence.").font(.caption).foregroundStyle(.secondary)
                         }
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Avant / après").fontWeight(.semibold)
-                            HStack(spacing: 12) { legends }
-                        }
+                        Spacer(minLength: 0)
                     }
-                    .font(.caption)
+                    HStack(spacing: 14) { legends; Spacer(minLength: 0) }
+                        .font(.caption)
                     CorrectionCurveView(filters: model.correction?.filters ?? [], sampleRate: model.sampleRate,
                                         measured: model.correctionEnabled ? model.correction?.measured : nil)
                         .frame(minHeight: 240, maxHeight: .infinity)
@@ -78,8 +82,9 @@ struct HeadphonesPage: View {
             .frame(minWidth: 260, idealWidth: 340, maxWidth: 360, maxHeight: .infinity, alignment: .top)
         }
         .padding(20)
-        .navigationTitle("Casque")
+        .navigationTitle("Sortie audio")
         .sheet(isPresented: $measuring) { MeasurementSheet() }
+        .onDisappear { model.correctionAudition = .normal }
         .onAppear {
             model.refreshOutputKind()
             search.prepare()
@@ -105,7 +110,7 @@ struct HeadphonesPage: View {
             HStack {
                 Text(model.outputIsSpeakers ? "Corriger le rendu des haut-parleurs" : "Corriger le rendu du casque")
                 Spacer()
-                Toggle("Corriger le rendu du casque", isOn: $model.correctionEnabled)
+                Toggle("Corriger le rendu", isOn: $model.correctionEnabled)
                     .toggleStyle(.switch).labelsHidden()
                     .disabled(model.correction == nil)
             }
@@ -121,7 +126,7 @@ struct HeadphonesPage: View {
                         Button("Retirer la correction", role: .destructive) { model.setCorrection(nil) }
                     }
                 } label: {
-                    Text(model.correction?.name ?? String(localized: "Aucun : cherchez votre casque"))
+                    Text(model.correction?.name ?? (model.outputIsSpeakers ? String(localized: "Aucune : mesurez vos haut-parleurs") : String(localized: "Aucun : cherchez votre casque")))
                         .lineLimit(1)
                 }
                 .fixedSize()
@@ -380,7 +385,7 @@ struct AppsPage: View {
                 }
                 .width(min: 180, ideal: 200)
             }
-            Text("Une application réglée à part ne passe pas par l'égaliseur principal. La correction de casque et le mode nuit s'appliquent ensuite à toutes les applications.")
+            Text("Une application réglée à part ne passe pas par l'égaliseur principal. La correction de la sortie audio et le mode nuit s'appliquent ensuite à toutes les applications.")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(20)
@@ -815,5 +820,22 @@ struct MiniResponse: View {
         }
         .background(.background.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
         .accessibilityHidden(true)
+    }
+}
+
+/// Bouton « Avant | Après » : écouter le son sans puis avec la correction.
+struct BeforeAfterPicker: View {
+    @Binding var after: Bool
+
+    var body: some View {
+        Picker("Écoute", selection: $after) {
+            Text("Avant").tag(false)
+            Text("Après").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .help("Avant : sans la correction. Après : avec la correction. Le reste du réglage ne change pas.")
+        .accessibilityLabel("Écouter avant ou après la correction")
     }
 }
