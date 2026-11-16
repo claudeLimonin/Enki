@@ -18,7 +18,11 @@ struct QuickView: View {
         VStack(alignment: .leading, spacing: 12) {
             header.tourAnchor(.power)
             outputCard.tourAnchor(.output)
-            presetRow.tourAnchor(.preset)
+            VStack(alignment: .leading, spacing: 6) {
+                presetRow
+                SeparateAppsNote { close() }
+            }
+            .tourAnchor(.preset)
             graph.tourAnchor(.graph)
             tiles.tourAnchor(.tiles)
             Divider()
@@ -205,4 +209,53 @@ struct MenuRow: View {
         .buttonStyle(.plain)
         .onHover { hover = $0 }
     }
+}
+
+/// Rappel des applications réglées à part (le préréglage principal ne les concerne pas).
+struct SeparateAppsNote: View {
+    @EnvironmentObject var model: EQModel
+    var beforeOpen: () -> Void = {}
+
+    var body: some View { separateAppsNote }
+
+    /// Applications réglées à part : le préréglage principal ne s'applique pas à elles.
+    var separateApps: [(app: AudioApp, setting: String)] {
+        model.appPageItems.compactMap { app in
+            switch model.choice(for: app.bundleID) {
+            case .main: return nil
+            case .bypass: return (app, String(localized: "sans égaliseur"))
+            case .preset(let name): return (app, model.display(name))
+            }
+        }
+        .sorted { $0.app.isPlaying && !$1.app.isPlaying }
+    }
+
+    @ViewBuilder
+    private var separateAppsNote: some View {
+        let items = separateApps
+        if !items.isEmpty {
+            let playing = items.contains { $0.app.isPlaying }
+            let list = items.map { "\($0.app.name) (\($0.setting))" }.joined(separator: ", ")
+            Button {
+                beforeOpen()
+                MainWindowController.shared.show(.apps)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: playing ? "exclamationmark.circle.fill" : "info.circle")
+                        .foregroundStyle(playing ? Color.orange : Color.secondary)
+                    Text("Réglées à part, non concernées par ce préréglage : \(list)")
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                }
+                .font(.caption)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Ces applications gardent leur propre réglage. Cliquez pour les modifier.")
+        }
+    }
+
 }

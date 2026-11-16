@@ -401,3 +401,6 @@
 "Édition" = "Edit";
 "Égaliseur" = "Equalizer";
 "Aucune sortie mémorisée pour l'instant." = "No remembered outputs yet.";
+"sans égaliseur" = "no equalizer";
+"Réglées à part, non concernées par ce préréglage : %@" = "Set separately, not affected by this preset: %@";
+"Ces applications gardent leur propre réglage. Cliquez pour les modifier." = "These apps keep their own setting. Click to change them.";

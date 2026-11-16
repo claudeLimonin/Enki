@@ -113,6 +113,8 @@ struct EqualizerPage: View {
             }
             .toggleStyle(.checkbox)
 
+            SeparateAppsNote()
+
             SpectrumPanel(selectedBand: $selectedBand)
                 .frame(minHeight: 240, maxHeight: .infinity)
 
