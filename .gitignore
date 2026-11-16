@@ -1,0 +1,7 @@
+# Compilation
+.build/
+build/
+dist/
+.swiftpm/
+# macOS
+.DS_Store

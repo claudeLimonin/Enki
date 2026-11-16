@@ -1,0 +1,2 @@
+/* Textes de Info.plist en anglais. */
+"NSAudioCaptureUsageDescription" = "Égaliseur needs to capture your Mac's sound to equalize it before sending it back to your speakers.";
