@@ -27,7 +27,7 @@ struct SpectrumPanel: View {
                 if let id = model.addBand(at: f, gain: g) { selectedBand = id }
             },
             onDragEnd: { model.sortBands() },
-            levelerDB: model.leveler > 0 && (model.showNightLayer || compact) ? analyzer.levelerDB : nil,
+            levelerDB: model.leveler > 0 ? analyzer.levelerDB : nil,
             levelerName: OutputOptions.levelerNames[model.leveler],
             compact: compact)
             .onAppear { startIfNeeded() }

@@ -404,3 +404,8 @@
 "sans égaliseur" = "no equalizer";
 "Réglées à part, non concernées par ce préréglage : %@" = "Set separately, not affected by this preset: %@";
 "Ces applications gardent leur propre réglage. Cliquez pour les modifier." = "These apps keep their own setting. Click to change them.";
+"Revenir à « %@ »" = "Revert to “%@”";
+"Importer un préréglage…" = "Import a Preset…";
+"Partager les réglages actuels…" = "Share Current Settings…";
+"Actions sur les préréglages" = "Preset actions";
+"Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume." = "Tames loud bass and lifts quiet dialogue, for listening at low volume.";

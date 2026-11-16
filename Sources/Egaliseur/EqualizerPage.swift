@@ -52,39 +52,56 @@ struct PresetNameSheet: View {
     }
 }
 
-/// Menu local des préréglages (barre d'outils de la fenêtre).
-struct PresetPicker: View {
+/// Menu déroulant des préréglages, avec un menu d'actions à côté (enregistrer, renommer, partager…).
+struct PresetControls: View {
     @EnvironmentObject var model: EQModel
     @Binding var nameRequest: PresetNameRequest?
     @State private var confirmDelete = false
 
     var body: some View {
-        Menu {
-            Section("Préréglages") {
-                ForEach(EQModel.presets) { p in Button(p.displayName) { model.apply(p) } }
-            }
-            if !model.userPresets.isEmpty {
-                Section("Mes préréglages") {
-                    ForEach(model.userPresets) { p in Button(p.displayName) { model.apply(p) } }
+        HStack(spacing: 6) {
+            Picker("Préréglage", selection: Binding(
+                get: { model.selectedPreset ?? "" },
+                set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
+                if model.selectedPreset == nil { Text(EQModel.customDisplayName).tag("") }
+                Section("Préréglages") { ForEach(EQModel.presets) { item($0) } }
+                if !model.userPresets.isEmpty {
+                    Section("Mes préréglages") { ForEach(model.userPresets) { item($0) } }
                 }
             }
-            Divider()
-            Button("Enregistrer sous…") { nameRequest = PresetNameRequest(kind: .saveAs) }
-            if let p = model.selectedUserPreset {
-                Button("Mettre à jour « \(p.name) »") { model.updateSelected() }.disabled(!model.isModified)
-                Button("Renommer « \(p.name) »…") { nameRequest = PresetNameRequest(kind: .rename(p.name)) }
-                Button("Supprimer « \(p.name) »…") { confirmDelete = true }
+            .frame(width: 230)
+            Menu {
+                if let name = model.selectedPreset, model.isModified, let p = model.preset(named: name) {
+                    Button("Revenir à « \(p.displayName) »") { model.apply(p) }
+                    Divider()
+                }
+                Button("Enregistrer sous…") { nameRequest = PresetNameRequest(kind: .saveAs) }
+                if let p = model.selectedUserPreset {
+                    Button("Mettre à jour « \(p.name) »") { model.updateSelected() }.disabled(!model.isModified)
+                    Button("Renommer « \(p.name) »…") { nameRequest = PresetNameRequest(kind: .rename(p.name)) }
+                    Button("Supprimer « \(p.name) »…") { confirmDelete = true }
+                }
+                Divider()
+                Button("Importer un préréglage…") { PresetFile.chooseAndImport(into: model) }
+                Button("Partager les réglages actuels…") { PresetFile.export(from: model) }
+            } label: {
+                Image(systemName: "ellipsis.circle")
             }
-        } label: {
-            Text(model.presetTitle).lineLimit(1)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Actions sur les préréglages")
+            .accessibilityLabel("Actions sur les préréglages")
         }
-        .frame(minWidth: 110, maxWidth: 170)
-        .help("Préréglage")
         .confirmationDialog("Supprimer « \(model.selectedUserPreset?.name ?? "") » ?", isPresented: $confirmDelete) {
             Button("Supprimer", role: .destructive) { model.deleteSelected() }
         } message: {
             Text("Les réglages en cours restent tels quels.")
         }
+    }
+
+    private func item(_ p: EQPreset) -> some View {
+        Text(p.name == model.selectedPreset ? model.presetTitle : p.displayName).tag(p.name)
     }
 }
 
@@ -97,19 +114,26 @@ struct EqualizerPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 16) {
-                Text("Afficher :").foregroundStyle(.secondary)
-                Toggle("Correction casque", isOn: $model.showCorrectionLayer)
-                    .disabled(model.correction == nil)
-                Toggle("Mode nuit", isOn: $model.showNightLayer)
-                    .disabled(model.leveler == 0)
-                Toggle("Spectre", isOn: $model.showSpectrum)
+            HStack(spacing: 20) {
+                PresetControls(nameRequest: $nameRequest)
+                Picker("Mode nuit", selection: $model.leveler) {
+                    ForEach(OutputOptions.levelerNames.indices, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+                }
+                .frame(width: 190)
+                .help("Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume.")
                 Spacer()
                 if model.comparing {
                     Label("Son d'origine", systemImage: "speaker.wave.2")
                         .foregroundStyle(.orange)
                         .font(.callout.weight(.semibold))
                 }
+            }
+            HStack(spacing: 16) {
+                Text("Afficher :").foregroundStyle(.secondary)
+                Toggle("Correction casque", isOn: $model.showCorrectionLayer)
+                    .disabled(model.correction == nil)
+                Toggle("Spectre", isOn: $model.showSpectrum)
+                Spacer()
             }
             .toggleStyle(.checkbox)
 
@@ -136,7 +160,6 @@ struct EqualizerPage: View {
                 }
                 .pickerStyle(.segmented)
                 .help("Graphique : 10 bandes fixes. Paramétrique : bandes libres (fréquence, gain, largeur).")
-                PresetPicker(nameRequest: $nameRequest)
                 Toggle(isOn: $model.comparing) { Text("Comparer") }
                     .toggleStyle(.button)
                     .help("Écouter le son d'origine, sans aucun traitement, pour comparer.")

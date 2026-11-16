@@ -105,14 +105,18 @@ struct QuickView: View {
                 get: { model.selectedPreset ?? "" },
                 set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
                 if model.selectedPreset == nil { Text(EQModel.customDisplayName).tag("") }
-                Section("Préréglages") { ForEach(EQModel.presets) { Text($0.displayName).tag($0.name) } }
+                Section("Préréglages") { ForEach(EQModel.presets) { item($0) } }
                 if !model.userPresets.isEmpty {
-                    Section("Mes préréglages") { ForEach(model.userPresets) { Text($0.displayName).tag($0.name) } }
+                    Section("Mes préréglages") { ForEach(model.userPresets) { item($0) } }
                 }
             }
             .labelsHidden()
             .frame(width: 180)
         }
+    }
+
+    private func item(_ p: EQPreset) -> some View {
+        Text(p.name == model.selectedPreset ? model.presetTitle : p.displayName).tag(p.name)
     }
 
     private var graph: some View {

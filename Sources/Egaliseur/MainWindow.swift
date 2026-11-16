@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Sections de la fenêtre principale (barre latérale).
 enum MainSection: String, CaseIterable, Identifiable {
-    case equalizer, headphones, apps, listening, presets
+    case equalizer, headphones, apps, listening
     var id: String { rawValue }
 
     var title: String {
@@ -13,7 +13,6 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .headphones: return String(localized: "Casque")
         case .apps: return String(localized: "Applications")
         case .listening: return String(localized: "Écoute")
-        case .presets: return String(localized: "Préréglages")
         }
     }
 
@@ -23,7 +22,6 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .headphones: return "headphones"
         case .apps: return "square.grid.2x2"
         case .listening: return "ear"
-        case .presets: return "list.bullet"
         }
     }
 }
@@ -102,7 +100,6 @@ struct MainView: View {
                 case .headphones: HeadphonesPage()
                 case .apps: AppsPage()
                 case .listening: ListeningPage()
-                case .presets: PresetsPage()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
