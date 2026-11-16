@@ -369,6 +369,7 @@ struct AppsPage: View {
 
 struct ListeningPage: View {
     @EnvironmentObject var model: EQModel
+    @State private var calibrating = false
 
     /// Une colonne en fenêtre normale, deux sur grand écran.
     private let columns = [GridItem(.adaptive(minimum: 380), spacing: 16, alignment: .top)]
@@ -415,6 +416,13 @@ struct ListeningPage: View {
                         .labelsHidden()
                         .help("Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué.")
                         .disabled(model.widening == 0)
+                        Button {
+                            calibrating = true
+                        } label: {
+                            Label("Mesurer avec la caméra…", systemImage: "person.crop.square.badge.camera")
+                        }
+                        .controlSize(.small)
+                        .help("La caméra s'allume 3 secondes pour estimer votre distance, puis s'éteint.")
                         if model.widening == OutputOptions.immersiveLevel {
                             Label("Immersif : placez-vous face à l'écran, au centre, à la distance choisie.", systemImage: "person.fill.viewfinder")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -452,6 +460,7 @@ struct ListeningPage: View {
         }
         .navigationTitle("Écoute")
         .onAppear { model.refreshOutputKind() }
+        .sheet(isPresented: $calibrating) { CalibrationSheet() }
     }
 
     /// Libellé à gauche, interrupteur à droite.

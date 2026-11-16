@@ -46,6 +46,8 @@
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Enki Audio a besoin de capter le son du système pour lui appliquer l'égalisation avant de le renvoyer vers vos haut-parleurs.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Enki Audio utilise la caméra quelques secondes, seulement quand vous le demandez, pour estimer votre distance à l'écran et régler l'élargissement stéréo. Aucune image n'est enregistrée ni envoyée.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
