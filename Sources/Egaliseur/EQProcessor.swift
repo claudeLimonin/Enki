@@ -256,7 +256,7 @@ private final class FilterChain {
 
     @inline(__always)
     func run(_ input: Double, channel: Int) -> Double {
-        var x = input * gain
+        var x = input * gain + EQProcessor.antiDenormal
         let st = state + channel * Self.maxFilters * 2
         for b in 0..<count {
             let k = coefs + b * 5
@@ -326,7 +326,8 @@ struct Crossover3 {
 private struct OutputDSP {
     var leveler = false
     /// Par bande (graves, voix, aigus) : seuil (dBFS), taux de compression, remontée (dB).
-    var bands = [NightBand](repeating: NightBand(), count: 3)
+    /// Tuple et non tableau : rien à allouer ni libérer dans le fil temps réel.
+    var bands = (NightBand(), NightBand(), NightBand())
     var xover = Crossover3.Coefs()
     var attack = 0.0, release = 0.0
     var crossfeed = false
@@ -339,7 +340,8 @@ private struct OutputDSP {
     init(_ o: OutputOptions, sampleRate: Double) {
         if (1...3).contains(o.leveler) {
             leveler = true
-            bands = OutputOptions.nightBands[o.leveler - 1]
+            let b = OutputOptions.nightBands[o.leveler - 1]
+            bands = (b[0], b[1], b[2])
             xover = Crossover3.coefs(OutputOptions.nightCrossovers.0, OutputOptions.nightCrossovers.1, sampleRate: sampleRate)
         }
         attack = 1 - exp(-1 / (0.010 * sampleRate))   // 10 ms
@@ -362,6 +364,9 @@ final class EQProcessor {
     static let maxSources = 8
     /// Plafond du limiteur : −1 dBFS, pour garder une marge avant la saturation.
     static let ceiling = pow(10.0, -1.0 / 20)
+    /// Signal continu infinitésimal (−500 dB) : évite les nombres dénormaux, très lents à calculer,
+    /// quand le son s'éteint (sans lui, un long silence peut provoquer des cycles manqués).
+    static let antiDenormal = 1e-25
     private static let releaseTime = 0.15
 
     private let sources = (0..<EQProcessor.maxSources).map { _ in FilterChain() }
@@ -580,7 +585,7 @@ final class EQProcessor {
             // Graves forts fortement réduits (explosions), voix calmes un peu remontées.
             // Le limiteur, juste après, rattrape les éventuels dépassements.
             if o.leveler {
-                let a = xoverL.split(l, o.xover), b = xoverR.split(r, o.xover)
+                let a = xoverL.split(l + Self.antiDenormal, o.xover), b = xoverR.split(r + Self.antiDenormal, o.xover)
                 @inline(__always) func gain(_ x: Double, _ e: inout Double, _ band: NightBand, _ out: inout Double) -> Double {
                     e += (x - e) * (x > e ? o.attack : o.release)
                     let envDB = 20 * log10(e + 1e-9)
@@ -590,9 +595,9 @@ final class EQProcessor {
                     out = g
                     return pow(10, g / 20)
                 }
-                let g0 = gain(max(abs(a.low), abs(b.low)), &env.0, o.bands[0], &levelDB.0)
-                let g1 = gain(max(abs(a.mid), abs(b.mid)), &env.1, o.bands[1], &levelDB.1)
-                let g2 = gain(max(abs(a.high), abs(b.high)), &env.2, o.bands[2], &levelDB.2)
+                let g0 = gain(max(abs(a.low), abs(b.low)), &env.0, o.bands.0, &levelDB.0)
+                let g1 = gain(max(abs(a.mid), abs(b.mid)), &env.1, o.bands.1, &levelDB.1)
+                let g2 = gain(max(abs(a.high), abs(b.high)), &env.2, o.bands.2, &levelDB.2)
                 l = a.low * g0 + a.mid * g1 + a.high * g2
                 r = b.low * g0 + b.mid * g1 + b.high * g2
             }

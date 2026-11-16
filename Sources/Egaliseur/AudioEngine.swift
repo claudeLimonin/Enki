@@ -52,7 +52,6 @@ final class AudioEngine {
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)
     private var outputID = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
-    private let queue = DispatchQueue(label: "egaliseur.audio", qos: .userInteractive)
     private var rateListener: AudioObjectPropertyListenerBlock?
 
     init() {
@@ -211,8 +210,13 @@ final class AudioEngine {
         logInputLayout(expectedTaps: descriptions.count)
         prepare(sampleRate, appGroups.map(\.key))
 
+        // Cycles de 512 échantillons (≈ 10 ms) plutôt que 128 : bien plus de marge, délai imperceptible.
+        setBufferFrameSize(512)
+
         let processor = self.processor
-        try check(AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, queue) { _, inData, _, outData, _ in
+        // File nil : le traitement s'exécute directement sur le fil temps réel de Core Audio.
+        // (Une file GCD ajoute un délai d'ordonnancement → cycles manqués → craquements.)
+        try check(AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, nil) { _, inData, _, outData, _ in
             processor.process(inData, outData)
         }, String(localized: "Création du traitement audio impossible"))
         try check(AudioDeviceStart(aggregateID, procID), String(localized: "Démarrage audio impossible"))
@@ -227,6 +231,20 @@ final class AudioEngine {
         rateListener = listener
 
         isRunning = true
+    }
+
+    /// Fixe la taille des cycles audio, dans les limites acceptées par le périphérique.
+    private func setBufferFrameSize(_ wanted: UInt32) {
+        var range = AudioValueRange()
+        var rsize = UInt32(MemoryLayout<AudioValueRange>.size)
+        var raddr = address(kAudioDevicePropertyBufferFrameSizeRange)
+        var frames = wanted
+        if AudioObjectGetPropertyData(aggregateID, &raddr, 0, nil, &rsize, &range) == noErr, range.mMaximum > 0 {
+            frames = UInt32(min(max(Double(wanted), range.mMinimum), range.mMaximum))
+        }
+        var addr = address(kAudioDevicePropertyBufferFrameSize)
+        let status = AudioObjectSetPropertyData(aggregateID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &frames)
+        log.notice("Taille des cycles : \(frames, privacy: .public) échantillons (\(status == noErr ? "ok" : "refusée", privacy: .public))")
     }
 
     /// Journalise la disposition des flux d'entrée (pour diagnostiquer l'ordre des taps).
