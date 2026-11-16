@@ -60,6 +60,20 @@ final class EQModel: ObservableObject {
         EQPreset(name: "Jazz", gains: [3, 2, 1, 2, -1, -1, 0, 1, 2, 3]),
         EQPreset(name: "Classique", gains: [4, 3, 2, 1, 0, 0, 0, 1, 2, 3]),
         EQPreset(name: "Électro", gains: [5, 4, 1, 0, -2, 1, 0, 1, 4, 5]),
+        EQPreset(name: "Hip-hop", gains: [6, 5, 2, 1, -1, -1, 1, 1, 2, 3]),
+        EQPreset(name: "R&B", gains: [5, 6, 3, -1, -2, 1, 2, 2, 3, 3]),
+        EQPreset(name: "Métal", gains: [4, 3, 1, -1, -2, 0, 2, 4, 4, 3]),
+        EQPreset(name: "Acoustique", gains: [3, 2, 1, 1, 2, 1, 2, 3, 2, 1]),
+        EQPreset(name: "Piano", gains: [1, 1, 0, 2, 3, 1, 3, 4, 3, 2]),
+        EQPreset(name: "Lounge", gains: [-2, -1, 0, 2, 3, 2, 0, -1, 1, 1]),
+        EQPreset(name: "Latino", gains: [3, 2, 0, 0, -1, -1, -1, 0, 3, 4]),
+        // Usages
+        EQPreset(name: "Podcast", gains: [-6, -4, -1, 1, 3, 4, 3, 1, -1, -3]),
+        EQPreset(name: "Cinéma", gains: [5, 4, 2, 0, -1, 1, 2, 2, 3, 2]),
+        EQPreset(name: "Jeux vidéo", gains: [3, 3, 1, 0, -1, 1, 3, 4, 3, 2]),
+        // Petits haut-parleurs : pas de grave profond (qu'ils ne peuvent pas rendre), plutôt le haut-grave.
+        EQPreset(name: "Petits haut-parleurs", gains: [0, 2, 4, 3, 1, 0, 0, 1, 2, 2]),
+        EQPreset(name: "Aigus adoucis", gains: [0, 0, 0, 0, 0, 0, -1, -3, -3, -2]),
     ]
 
     // MARK: Réglage principal

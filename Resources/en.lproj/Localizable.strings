@@ -431,3 +431,15 @@
 "Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume. S'applique à toutes les applications." = "Tames loud bass and lifts quiet dialogue, for listening at low volume. Applies to all apps.";
 "Afficher la correction de casque sur le graphique" = "Show headphone correction on the graph";
 "Afficher le spectre en direct sur le graphique" = "Show the live spectrum on the graph";
+"Hip-hop" = "Hip-Hop";
+"R&B" = "R&B";
+"Métal" = "Metal";
+"Acoustique" = "Acoustic";
+"Piano" = "Piano";
+"Lounge" = "Lounge";
+"Latino" = "Latin";
+"Podcast" = "Podcast";
+"Cinéma" = "Movies";
+"Jeux vidéo" = "Gaming";
+"Petits haut-parleurs" = "Small Speakers";
+"Aigus adoucis" = "Softer Treble";
