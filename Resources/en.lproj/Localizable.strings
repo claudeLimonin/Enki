@@ -272,3 +272,4 @@
 "Ce fichier n'est pas une sauvegarde d'Enki Audio." = "This file is not an Enki Audio backup.";
 "Ce fichier n'est pas un préréglage d'Enki Audio." = "This file is not an Enki Audio preset.";
 "Mode nuit (%@) · graves %@ · voix %@ · aigus %@ dB" = "Night mode (%@) · bass %@ · voice %@ · treble %@ dB";
+"Mode nuit activé : il abaisse déjà les passages forts, le son reste sous le plafond du limiteur. Le voyant reste donc gris la plupart du temps : c'est normal, le limiteur reste en place et n'intervient que si un pic passe malgré tout." = "Night mode is on: it already lowers loud passages, so the sound stays below the limiter's ceiling. The indicator therefore stays gray most of the time: this is normal, the limiter is still in place and only steps in if a peak gets through.";

@@ -474,9 +474,13 @@ struct EQView: View {
                 .animation(.easeOut(duration: 0.15), value: meter.active)
         }
         .buttonStyle(.plain)
-        .help(on
+        .help((on
               ? String(localized: "Limiteur actif : il baisse le volume un court instant pour éviter la saturation (orange quand il agit). Cliquez pour le couper.")
               : String(localized: "Limiteur coupé : le son n'est plus protégé contre la saturation (rouge quand elle se produit). Cliquez pour le réactiver."))
+              // Mode nuit : il garde déjà le son sous le plafond, le limiteur s'allume donc rarement.
+              + (on && model.leveler > 0
+                 ? "\n\n" + String(localized: "Mode nuit activé : il abaisse déjà les passages forts, le son reste sous le plafond du limiteur. Le voyant reste donc gris la plupart du temps : c'est normal, le limiteur reste en place et n'intervient que si un pic passe malgré tout.")
+                 : ""))
         .accessibilityLabel("Limiteur")
         .accessibilityValue(on ? (meter.active ? String(localized: "activé, en action") : String(localized: "activé")) : (meter.active ? String(localized: "désactivé, saturation") : String(localized: "désactivé")))
         .accessibilityHint("Active ou désactive le limiteur")
