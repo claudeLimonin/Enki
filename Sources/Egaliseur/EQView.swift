@@ -97,7 +97,7 @@ struct EQView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Égaliseur").font(.headline)
+                Text(verbatim: "Enki Audio").font(.headline)
                 HStack(spacing: 5) {
                     Circle()
                         .fill(model.hasError ? Color.red : (model.enabled ? Color.green : Color.secondary))
@@ -208,9 +208,9 @@ struct EQView: View {
             Toggle("Vérifier automatiquement les mises à jour", isOn: $updater.automatic)
             Divider()
             Button("Guide de démarrage") { tour.start() }
-            Button("À propos d'Égaliseur", action: showAboutPanel)
+            Button("À propos d'Enki Audio", action: showAboutPanel)
             Divider()
-            Button("Quitter Égaliseur") { NSApplication.shared.terminate(nil) }
+            Button("Quitter Enki Audio") { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {
             Image(systemName: updater.available == nil ? "gearshape" : "gearshape.badge.exclamationmark")

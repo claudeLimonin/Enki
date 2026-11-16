@@ -1,13 +1,13 @@
 <p align="center"><img src="Resources/AppIcon-preview.png" width="160" alt="Icône Enki Audio"></p>
 
-# Égaliseur
+# Enki Audio
 
 Égaliseur graphique et paramétrique pour **tout le son du Mac** (musique, vidéos, jeux, visioconférences), dans la barre des menus. Aucun pilote à installer : l'app utilise la capture audio intégrée à macOS.
 
 ## Installation
 
-1. Téléchargez `Egaliseur-<version>.dmg` depuis la page [Releases](https://github.com/claudeLimonin/Enki/releases/latest).
-2. Ouvrez-le et glissez **Egaliseur** sur le raccourci **Applications**.
+1. Téléchargez `EnkiAudio-<version>.dmg` depuis la page [Releases](https://github.com/claudeLimonin/Enki/releases/latest).
+2. Ouvrez-le et glissez **Enki Audio** sur le raccourci **Applications**.
 3. Au premier lancement, macOS bloque l'app (elle ne vient pas de l'App Store) : Réglages Système → Confidentialité et sécurité → **Ouvrir quand même**.
 4. Acceptez l'autorisation de capter l'audio du système (demandée une seule fois).
 
@@ -27,8 +27,8 @@ Les mises à jour sont ensuite proposées automatiquement par l'app.
 ## Développement
 
 ```bash
-./build.sh            # compile et signe build/Egaliseur.app
-./package.sh          # image disque universelle dist/Egaliseur-<version>.dmg
+./build.sh            # compile et signe « build/Enki Audio.app »
+./package.sh          # image disque universelle dist/EnkiAudio-<version>.dmg
 ./release.sh "Notes"  # publie la version sur GitHub (après avoir augmenté le numéro dans Resources/Info.plist)
 ```
 

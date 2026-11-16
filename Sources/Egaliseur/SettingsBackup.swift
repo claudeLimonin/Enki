@@ -28,7 +28,7 @@ enum SettingsBackup {
         guard let root = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
               root["format"] as? String == format,
               let values = root["settings"] as? [String: Any] else {
-            throw AudioError(message: "Ce fichier n'est pas une sauvegarde d'Égaliseur.")
+            throw AudioError(message: String(localized: "Ce fichier n'est pas une sauvegarde d'Enki Audio."))
         }
         let d = UserDefaults.standard
         for k in keys {
@@ -40,7 +40,7 @@ enum SettingsBackup {
         let panel = NSSavePanel()
         panel.title = String(localized: "Sauvegarder les réglages")
         panel.message = String(localized: "Préréglages, correction de casque, réglages par sortie et par application.")
-        panel.nameFieldStringValue = String(localized: "Réglages Égaliseur") + ".egaliseur"
+        panel.nameFieldStringValue = String(localized: "Réglages Enki Audio") + ".egaliseur"
         panel.allowedContentTypes = [fileType]
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -103,7 +103,7 @@ enum PresetFile {
     static func decode(_ data: Data) throws -> EQPreset {
         guard let w = try? JSONDecoder().decode(Wrapper.self, from: data), w.format == format,
               w.preset.gains.count == EQModel.frequencies.count else {
-            throw AudioError(message: "Ce fichier n'est pas un préréglage d'Égaliseur.")
+            throw AudioError(message: String(localized: "Ce fichier n'est pas un préréglage d'Enki Audio."))
         }
         var p = w.preset
         // Bornes de sécurité (fichier modifié à la main).
@@ -118,7 +118,7 @@ enum PresetFile {
         let name = model.selectedPreset ?? "Mon réglage"
         let panel = NSSavePanel()
         panel.title = String(localized: "Partager ce réglage")
-        panel.message = String(localized: "Un fichier à envoyer : un double-clic dessus l'ajoute aux préréglages d'Égaliseur.")
+        panel.message = String(localized: "Un fichier à envoyer : un double-clic dessus l'ajoute aux préréglages d'Enki Audio.")
         panel.nameFieldStringValue = "\(name).egpreset"
         panel.allowedContentTypes = [fileType]
         NSApp.activate(ignoringOtherApps: true)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Signe une app ad hoc (sans certificat ni trousseau) avec une identité stable.
-# Usage : ./sign.sh chemin/vers/Egaliseur.app
+# Usage : ./sign.sh "chemin/vers/Enki Audio.app"
 set -euo pipefail
 APP="$1"
 ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Contents/Info.plist")

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Produit dist/Egaliseur-<version>.dmg, prêt à partager (installation classique,
+# Produit dist/EnkiAudio-<version>.dmg, prêt à partager (installation classique,
 # sans App Store) : app universelle (Apple Silicon + Intel), raccourci « Applications »
 # pour l'installer par glisser-déposer, et notice.
 #
@@ -15,12 +15,12 @@ echo "→ Compilation universelle (arm64 + x86_64)…"
 swift build -c release --arch arm64 --arch x86_64
 BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/Egaliseur"
 
-STAGE="dist/Egaliseur"
-APP="$STAGE/Egaliseur.app"
+STAGE="dist/Enki Audio"
+APP="$STAGE/Enki Audio.app"
 rm -rf dist
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-cp "$BIN" "$APP/Contents/MacOS/Egaliseur"
+cp "$BIN" "$APP/Contents/MacOS/EnkiAudio"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 [ -f Resources/AppIcon.icns ] || swift Resources/make_icon.swift
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
@@ -33,10 +33,23 @@ echo "→ Signature…"
 
 # Raccourci vers Applications : on glisse l'app dessus pour l'installer.
 ln -s /Applications "$STAGE/Applications"
+# Compatibilité : les versions 2.1 (« Égaliseur ») cherchent « Egaliseur.app » pour se mettre à jour.
+# Raccourci caché vers la nouvelle app : invisible dans le Finder, mais suivi lors de la copie.
+ln -s "Enki Audio.app" "$STAGE/Egaliseur.app"
 
 echo "→ Image disque…"
-DMG="dist/Egaliseur-$VERSION.dmg"
-hdiutil create -volname "Égaliseur $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG" >/dev/null
+DMG="dist/EnkiAudio-$VERSION.dmg"
+# Image modifiable d'abord, pour cacher le raccourci de compatibilité dans le volume lui-même
+# (l'attribut « invisible » n'est pas conservé autrement), puis compression.
+RW="dist/rw.dmg"
+MNT="dist/rw-mount"
+hdiutil create -volname "Enki Audio $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDRW -ov "$RW" >/dev/null
+mkdir -p "$MNT"
+hdiutil attach "$RW" -nobrowse -mountpoint "$MNT" -quiet
+chflags -h hidden "$MNT/Egaliseur.app"
+hdiutil detach "$MNT" -quiet
+hdiutil convert "$RW" -format UDZO -ov -o "$DMG" >/dev/null
+rm -rf "$RW" "$MNT"
 rm -rf "$STAGE"
 
 echo

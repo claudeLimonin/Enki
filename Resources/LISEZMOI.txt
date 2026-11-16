@@ -1,12 +1,12 @@
-ÉGALISEUR — Installation
+ENKI AUDIO — Installation
 ========================
 
 Compatibilité : macOS 14.2 ou plus récent (Mac Apple Silicon ou Intel).
 
-1. Glissez « Egaliseur » sur le raccourci « Applications » de cette fenêtre.
+1. Glissez « Enki Audio » sur le raccourci « Applications » de cette fenêtre.
    (Mise à jour : acceptez de remplacer l'ancienne version, vos réglages sont conservés.)
 
-2. Ouvrez Égaliseur depuis le dossier Applications. macOS va la bloquer,
+2. Ouvrez Enki Audio depuis le dossier Applications. macOS va la bloquer,
    car elle ne vient pas de l'App Store : fermez le message.
 
 3. Ouvrez Réglages Système → Confidentialité et sécurité, descendez
@@ -16,25 +16,25 @@ Compatibilité : macOS 14.2 ou plus récent (Mac Apple Silicon ou Intel).
 4. Acceptez l'autorisation de capter l'audio du système. Sans elle,
    l'égaliseur ne peut pas traiter le son. Elle n'est demandée qu'une fois.
 
-Un guide s'affiche au premier lancement. L'égaliseur vit ensuite dans la
+Un guide s'affiche au premier lancement. Enki Audio vit ensuite dans la
 barre des menus, en haut à droite de l'écran (icône à curseurs) :
 clic gauche pour l'égaliseur, clic droit pour les options.
 
 Vos réglages sont enregistrés automatiquement. Pour en garder une copie
 ou les transférer sur un autre Mac : menu ⚙︎ → « Sauvegarder les réglages… ».
 
-Pas de son ? Menu ⚙︎ → « Autorisation audio… », et autorisez Égaliseur dans
+Pas de son ? Menu ⚙︎ → « Autorisation audio… », et autorisez Enki Audio dans
 « Enregistrement de l'écran et de l'audio système ».
 
-Égaliseur — © 2026 Claude Limonin
+Enki Audio — © 2026 Claude Limonin
 
 
-ÉGALISEUR — Installation (English)
+ENKI AUDIO — Installation (English)
 ==================================
 
 Requires macOS 14.2 or later (Apple Silicon or Intel Mac).
 
-1. Drag "Egaliseur" onto the "Applications" shortcut in this window.
+1. Drag "Enki Audio" onto the "Applications" shortcut in this window.
 2. Open it from Applications. macOS blocks it because it is not from the
    App Store: close the message, then go to System Settings → Privacy &
    Security, scroll down and click "Open Anyway" (only once).

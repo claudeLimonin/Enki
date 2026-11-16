@@ -5,12 +5,12 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Égaliseur</string>
+	<string>Enki Audio</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Préréglage Égaliseur</string>
+			<string>Préréglage Enki Audio</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
@@ -22,7 +22,7 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>Egaliseur</string>
+	<string>EnkiAudio</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
@@ -33,19 +33,19 @@
 		<string>fr</string>
 	</array>
 	<key>CFBundleName</key>
-	<string>Égaliseur</string>
+	<string>Enki Audio</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.1</string>
+	<string>2.2</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>4</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.2</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Égaliseur a besoin de capter le son du système pour lui appliquer l'égalisation avant de le renvoyer vers vos haut-parleurs.</string>
+	<string>Enki Audio a besoin de capter le son du système pour lui appliquer l'égalisation avant de le renvoyer vers vos haut-parleurs.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
@@ -58,7 +58,7 @@
 				<string>public.json</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Préréglage Égaliseur</string>
+			<string>Préréglage Enki Audio</string>
 			<key>UTTypeIdentifier</key>
 			<string>local.egaliseur.preset</string>
 			<key>UTTypeTagSpecification</key>
@@ -76,7 +76,7 @@
 				<string>com.apple.property-list</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Réglages Égaliseur</string>
+			<string>Réglages Enki Audio</string>
 			<key>UTTypeIdentifier</key>
 			<string>local.egaliseur.settings</string>
 			<key>UTTypeTagSpecification</key>

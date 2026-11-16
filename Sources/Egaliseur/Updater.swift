@@ -64,7 +64,7 @@ final class Updater: ObservableObject {
                 guard let release, Self.isVersion(release.version, newerThan: Self.currentVersion) else {
                     available = nil
                     if interactive {
-                        alert(String(localized: "Égaliseur est à jour"),
+                        alert(String(localized: "Enki Audio est à jour"),
                               String(localized: "Vous utilisez la dernière version (\(Self.currentVersion))."))
                     }
                     return
@@ -120,7 +120,7 @@ final class Updater: ObservableObject {
 
     private func offer(_ r: Release) {
         let a = NSAlert()
-        a.messageText = String(localized: "Égaliseur \(r.version) est disponible")
+        a.messageText = String(localized: "Enki Audio \(r.version) est disponible")
         let notes = r.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         a.informativeText = String(localized: "Vous avez la version \(Self.currentVersion). Vos réglages et l'autorisation audio sont conservés.")
             + (notes.isEmpty ? "" : "\n\n" + String(notes.prefix(600)))
@@ -139,7 +139,7 @@ final class Updater: ObservableObject {
     func install(_ r: Release) {
         guard !installing else { return }
         installing = true
-        EQModel.shared.notify(String(localized: "Téléchargement d'Égaliseur \(r.version)…"), symbol: "arrow.down.circle")
+        EQModel.shared.notify(String(localized: "Téléchargement d'Enki Audio \(r.version)…"), symbol: "arrow.down.circle")
         Task { @MainActor in
             defer { installing = false }
             do {
@@ -173,43 +173,50 @@ final class Updater: ObservableObject {
         let mount = work.appendingPathComponent("volume")
         try run("/usr/bin/hdiutil", ["attach", dmg.path, "-nobrowse", "-readonly", "-mountpoint", mount.path])
         defer { _ = try? run("/usr/bin/hdiutil", ["detach", mount.path, "-force"]) }
-        let source = mount.appendingPathComponent("Egaliseur.app")
-        guard FileManager.default.fileExists(atPath: source.path) else {
-            throw UpdateError(message: String(localized: "L'image disque ne contient pas Egaliseur.app."))
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: mount.path)) ?? []
+        let appName = ["Enki Audio.app", "Egaliseur.app"].first(where: names.contains) ?? names.first { $0.hasSuffix(".app") }
+        guard let appName else {
+            throw UpdateError(message: String(localized: "L'image disque ne contient pas l'app Enki Audio."))
         }
-        let copy = work.appendingPathComponent("Egaliseur.app")
+        let source = mount.appendingPathComponent(appName)
+        let copy = work.appendingPathComponent(appBundleName)
         try run("/usr/bin/ditto", [source.path, copy.path])
 
         // Contrôles : même app (identifiant), signature intacte, version annoncée.
         let info = NSDictionary(contentsOf: copy.appendingPathComponent("Contents/Info.plist"))
         guard info?["CFBundleIdentifier"] as? String == Bundle.main.bundleIdentifier else {
-            throw UpdateError(message: String(localized: "L'app téléchargée n'est pas Égaliseur."))
+            throw UpdateError(message: String(localized: "L'app téléchargée n'est pas Enki Audio."))
         }
         try run("/usr/bin/codesign", ["--verify", "--strict", copy.path])
         return copy
     }
 
+    /// Nom du paquet de l'app installée (l'app s'appelait « Egaliseur.app » jusqu'à la 2.1).
+    static let appBundleName = "Enki Audio.app"
+
     /// Un petit script attend la fermeture de l'app, la remplace, puis rouvre la nouvelle.
     private static func replaceAndRelaunch(with newApp: URL) throws {
         let current = Bundle.main.bundleURL
         let parent = current.deletingLastPathComponent()
+        let destination = parent.appendingPathComponent(appBundleName)
         guard FileManager.default.isWritableFile(atPath: parent.path) else {
             throw UpdateError(message: String(localized: "Le dossier « \(parent.path) » n'est pas modifiable."))
         }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
-        p.arguments = ["-c", replacementScript(current: current, newApp: newApp, pid: getpid(), relaunch: true)]
+        p.arguments = ["-c", replacementScript(current: current, destination: destination, newApp: newApp, pid: getpid(), relaunch: true)]
         try p.run()
         NSApp.terminate(nil)
     }
 
-    static func replacementScript(current: URL, newApp: URL, pid: pid_t, relaunch: Bool) -> String {
+    /// Remplace `current` par `newApp`, installée à `destination` (nouveau nom si l'app a été renommée).
+    static func replacementScript(current: URL, destination: URL, newApp: URL, pid: pid_t, relaunch: Bool) -> String {
         func q(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
         return """
             while /bin/kill -0 \(pid) 2>/dev/null; do /bin/sleep 0.2; done
-            /bin/rm -rf \(q(current.path)) && /usr/bin/ditto \(q(newApp.path)) \(q(current.path))
-            /usr/bin/xattr -dr com.apple.quarantine \(q(current.path)) 2>/dev/null
-            \(relaunch ? "/usr/bin/open " + q(current.path) : "true")
+            /bin/rm -rf \(q(current.path)) \(q(destination.path)) && /usr/bin/ditto \(q(newApp.path)) \(q(destination.path))
+            /usr/bin/xattr -dr com.apple.quarantine \(q(destination.path)) 2>/dev/null
+            \(relaunch ? "/usr/bin/open " + q(destination.path) : "true")
             /bin/rm -rf \(q(newApp.deletingLastPathComponent().path))
             """
     }

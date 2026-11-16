@@ -155,7 +155,7 @@ struct HearingTestView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Test auditif", systemImage: "ear").font(.title2.bold())
-            Text("Le test mesure à quel niveau vous entendez 8 sons, des graves aux aigus. Égaliseur en déduit une courbe qui renforce les fréquences que vous percevez moins bien.")
+            Text("Le test mesure à quel niveau vous entendez 8 sons, des graves aux aigus. Enki Audio en déduit une courbe qui renforce les fréquences que vous percevez moins bien.")
             VStack(alignment: .leading, spacing: 6) {
                 Label("Mettez le casque ou les écouteurs que vous utilisez d'habitude.", systemImage: "headphones")
                 Label("Installez-vous au calme.", systemImage: "speaker.slash")

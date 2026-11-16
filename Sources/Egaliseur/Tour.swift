@@ -26,8 +26,8 @@ final class Tour: ObservableObject {
 
     static let steps: [TourStep] = [
         TourStep(id: 0, anchor: nil,
-                 title: String(localized: "Bienvenue dans Égaliseur"),
-                 text: String(localized: "Égaliseur règle le son de tout votre Mac : musique, vidéos, jeux, visioconférences.\n\nIl vit dans la barre des menus, en haut à droite de l'écran : la petite flèche au-dessus de cette fenêtre pointe vers son icône. Clic gauche pour ouvrir cette fenêtre, clic droit pour les options.")),
+                 title: String(localized: "Bienvenue dans Enki Audio"),
+                 text: String(localized: "Enki Audio règle le son de tout votre Mac : musique, vidéos, jeux, visioconférences.\n\nIl vit dans la barre des menus, en haut à droite de l'écran : la petite flèche au-dessus de cette fenêtre pointe vers son icône. Clic gauche pour ouvrir cette fenêtre, clic droit pour les options.")),
         TourStep(id: 1, anchor: .power,
                  title: String(localized: "Allumer ou couper"),
                  text: String(localized: "Cet interrupteur active l'égaliseur. Juste à gauche, l'état indique la sortie audio utilisée (haut-parleurs, casque…)."),
@@ -214,7 +214,7 @@ struct TourOverlay: View {
         switch step.anchor {
         case .power where model.hasError:
             VStack(alignment: .leading, spacing: 6) {
-                Text("macOS n'a pas encore autorisé Égaliseur à capter le son.")
+                Text("macOS n'a pas encore autorisé Enki Audio à capter le son.")
                     .font(.callout).foregroundStyle(.red)
                 Button("Autoriser l'accès audio…") {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture") {
@@ -223,7 +223,7 @@ struct TourOverlay: View {
                 }
             }
         case .settings:
-            Toggle("Ouvrir Égaliseur au démarrage du Mac", isOn: Binding(
+            Toggle("Ouvrir Enki Audio au démarrage du Mac", isOn: Binding(
                 get: { LaunchAtLogin.isEnabled },
                 set: { _ in LaunchAtLogin.toggle() }))
                 .toggleStyle(.checkbox)

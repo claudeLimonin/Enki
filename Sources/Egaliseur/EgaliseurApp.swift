@@ -56,11 +56,11 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             on ? self?.hotkeys.register() : self?.hotkeys.unregister()
         })
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "slider.vertical.3", accessibilityDescription: "Égaliseur")
+            button.image = NSImage(systemSymbolName: "slider.vertical.3", accessibilityDescription: "Enki Audio")
             button.target = self
             button.action = #selector(clicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = String(localized: "Égaliseur — clic droit pour les paramètres")
+            button.toolTip = String(localized: "Enki Audio — clic droit pour les paramètres")
         }
         popover.behavior = .transient
         popover.animates = false
@@ -197,8 +197,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(action(String(localized: "Rechercher les mises à jour…")) { _ in updater.check(interactive: true) })
         menu.addItem(toggle(String(localized: "Vérifier automatiquement les mises à jour"), updater.automatic) { _ in updater.automatic.toggle() })
         menu.addItem(.separator())
-        menu.addItem(action(String(localized: "À propos d'Égaliseur")) { _ in showAboutPanel() })
-        let quit = NSMenuItem(title: String(localized: "Quitter Égaliseur"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(action(String(localized: "À propos d'Enki Audio")) { _ in showAboutPanel() })
+        let quit = NSMenuItem(title: String(localized: "Quitter Enki Audio"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
 

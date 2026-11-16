@@ -18,18 +18,18 @@ gh auth status >/dev/null 2>&1 || { echo "Connectez-vous à GitHub : gh auth log
 if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
     echo "La version $VERSION est déjà publiée : augmentez le numéro dans Resources/Info.plist."; exit 1
 fi
-[ -n "$NOTES" ] || NOTES="Égaliseur $VERSION"
+[ -n "$NOTES" ] || NOTES="Enki Audio $VERSION"
 
 echo "→ Image disque $VERSION…"
 ./package.sh
-DMG="dist/Egaliseur-$VERSION.dmg"
+DMG="dist/EnkiAudio-$VERSION.dmg"
 
 echo "→ Envoi du code et de l'étiquette $TAG…"
-git tag -a "$TAG" -m "Égaliseur $VERSION" 2>/dev/null || true
+git tag -a "$TAG" -m "Enki Audio $VERSION" 2>/dev/null || true
 git push origin HEAD "$TAG"
 
 echo "→ Création de la version sur GitHub…"
-gh release create "$TAG" "$DMG" -R "$REPO" --title "Égaliseur $VERSION" --notes "$NOTES"
+gh release create "$TAG" "$DMG" -R "$REPO" --title "Enki Audio $VERSION" --notes "$NOTES"
 
 echo
 echo "Publiée : https://github.com/$REPO/releases/tag/$TAG"
