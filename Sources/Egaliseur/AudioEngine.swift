@@ -53,6 +53,10 @@ final class AudioEngine {
     private var outputID = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
     private var rateListener: AudioObjectPropertyListenerBlock?
+    private var timingTimer: Timer?
+    /// Déclare à macOS un traitement audio en cours : pas d'App Nap ni de mise en veille de la mémoire.
+    private var activity: NSObjectProtocol?
+    private var budgetMs = 10.0
 
     init() {
         var addr = address(kAudioHardwarePropertyDefaultOutputDevice)
@@ -231,6 +235,21 @@ final class AudioEngine {
         rateListener = listener
 
         isRunning = true
+        if activity == nil {
+            activity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
+                reason: "Traitement audio en temps réel")
+        }
+
+        // Diagnostic discret : signale dans le journal tout cycle de traitement proche du budget.
+        timingTimer?.invalidate()
+        timingTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self, self.isRunning else { return }
+            let t = self.processor.takeTiming()
+            if t.maxMs > self.budgetMs * 0.5 {
+                log.notice("Cycle lent : \(String(format: "%.2f", t.maxMs), privacy: .public) ms sur \(String(format: "%.2f", self.budgetMs), privacy: .public) ms de budget (\(t.cycles, privacy: .public) cycles en 30 s)")
+            }
+        }
     }
 
     /// Fixe la taille des cycles audio, dans les limites acceptées par le périphérique.
@@ -244,6 +263,7 @@ final class AudioEngine {
         }
         var addr = address(kAudioDevicePropertyBufferFrameSize)
         let status = AudioObjectSetPropertyData(aggregateID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &frames)
+        budgetMs = Double(frames) / max(sampleRate, 1) * 1000
         log.notice("Taille des cycles : \(frames, privacy: .public) échantillons (\(status == noErr ? "ok" : "refusée", privacy: .public))")
     }
 
@@ -283,6 +303,9 @@ final class AudioEngine {
 
     func stop() {
         isRunning = false
+        if let a = activity { ProcessInfo.processInfo.endActivity(a); activity = nil }
+        timingTimer?.invalidate()
+        timingTimer = nil
         if let listener = rateListener {
             var raddr = address(kAudioDevicePropertyNominalSampleRate)
             AudioObjectRemovePropertyListenerBlock(outputID, &raddr, .main, listener)

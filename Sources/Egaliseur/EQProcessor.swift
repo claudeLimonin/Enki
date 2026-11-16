@@ -2,6 +2,13 @@ import CoreAudio
 import Foundation
 import os
 
+/// Verrouille une zone mémoire en RAM : macOS ne pourra ni la compresser ni la mettre de côté.
+/// Le fil audio temps réel n'attend ainsi jamais une mémoire à récupérer (« page fault » → craquement).
+func wireMemory(_ pointer: UnsafeRawPointer, _ bytes: Int) {
+    guard bytes > 0 else { return }
+    _ = mlock(pointer, bytes)
+}
+
 /// Coefficients normalisés d'un biquad : [b0, b1, b2, a1, a2].
 typealias Biquad = [Double]
 
@@ -227,6 +234,8 @@ private final class FilterChain {
     init() {
         coefs.initialize(repeating: 0, count: Self.maxFilters * 5)
         state.initialize(repeating: 0, count: 2 * Self.maxFilters * 2)
+        wireMemory(coefs, Self.maxFilters * 5 * MemoryLayout<Double>.stride)
+        wireMemory(state, 2 * Self.maxFilters * 2 * MemoryLayout<Double>.stride)
     }
 
     deinit {
@@ -380,6 +389,8 @@ final class EQProcessor {
     private let meter: UnsafeMutablePointer<Float>
     /// Gain appliqué en ce moment par le volume nivelé (dB) ; NaN quand il est coupé.
     private let levelMeter: UnsafeMutablePointer<Float>
+    /// Diagnostic : durée du cycle le plus long (ns) et nombre de cycles traités, depuis la dernière lecture.
+    private let timing: UnsafeMutablePointer<UInt64>
     /// Tampon circulaire des derniers échantillons de sortie (mono), lu par l'analyseur de spectre.
     static let scopeSize = 16384
     private let scope: UnsafeMutablePointer<Float>
@@ -407,18 +418,29 @@ final class EQProcessor {
         lock.initialize(to: os_unfair_lock())
         meter = .allocate(capacity: 1)
         meter.initialize(to: 1)
+        timing = .allocate(capacity: 2)
+        timing.initialize(repeating: 0, count: 2)
         levelMeter = .allocate(capacity: 3)
         levelMeter.initialize(repeating: .nan, count: 3)
         scope = .allocate(capacity: Self.scopeSize)
         scope.initialize(repeating: 0, count: Self.scopeSize)
         scopeWritten = .allocate(capacity: 1)
         scopeWritten.initialize(to: 0)
+        for (p, n) in [(UnsafeRawPointer(scope), Self.scopeSize * 4), (UnsafeRawPointer(lock), MemoryLayout<os_unfair_lock>.size),
+                       (UnsafeRawPointer(meter), 4), (UnsafeRawPointer(timing), 16), (UnsafeRawPointer(levelMeter), 12),
+                       (UnsafeRawPointer(scopeWritten), 8)] {
+            wireMemory(p, n)
+        }
+        // L'objet lui-même (états du mode nuit, de la spatialisation, du limiteur…).
+        let me = Unmanaged.passUnretained(self).toOpaque()
+        wireMemory(me, malloc_size(me))
     }
 
     deinit {
         lock.deallocate()
         meter.deallocate()
         levelMeter.deallocate()
+        timing.deallocate()
         scope.deallocate()
         scopeWritten.deallocate()
     }
@@ -467,6 +489,14 @@ final class EQProcessor {
         return v.contains { $0.isNaN } ? nil : v
     }
 
+    /// Thread principal : (cycle le plus long en ms, nombre de cycles) depuis le dernier appel.
+    func takeTiming() -> (maxMs: Double, cycles: UInt64) {
+        let r = (Double(timing[0]) / 1e6, timing[1])
+        timing[0] = 0
+        timing[1] = 0
+        return r
+    }
+
     func takeLimiterGain() -> Float {
         let g = meter.pointee
         meter.pointee = 1
@@ -492,6 +522,12 @@ final class EQProcessor {
 
     /// Thread audio : lit chaque tap, égalise, mélange, corrige, limite, écrit vers la sortie.
     func process(_ inList: UnsafePointer<AudioBufferList>, _ outList: UnsafeMutablePointer<AudioBufferList>) {
+        let started = clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
+        defer {
+            let spent = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - started
+            if spent > timing[0] { timing[0] = spent }
+            timing[1] &+= 1
+        }
         if os_unfair_lock_trylock(lock) {
             if dirty {
                 for i in 0..<pendingSourceCount { sources[i].copy(from: pendingSources[i]) }
