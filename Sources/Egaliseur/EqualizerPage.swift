@@ -52,6 +52,64 @@ struct PresetNameSheet: View {
     }
 }
 
+/// Deux menus : le type de préréglage (Essentiels, Genres, Antilles…), puis les préréglages de ce type.
+struct PresetTypePicker: View {
+    @EnvironmentObject var model: EQModel
+    /// Type choisi à la main ; nil : celui du préréglage en cours.
+    @State private var chosenType: String?
+    var typeWidth: CGFloat? = 170
+    var presetWidth: CGFloat? = 190
+    var showLabels = true
+
+    private static let userType = "user"
+
+    private var groups: [(id: String, title: String, presets: [EQPreset])] {
+        var list = EQModel.presetGroups.map { (id: $0.title, title: $0.title, presets: $0.presets) }
+        if !model.userPresets.isEmpty {
+            list.append((id: Self.userType, title: String(localized: "Mes préréglages"), presets: model.userPresets))
+        }
+        return list
+    }
+
+    private func type(of name: String?) -> String? {
+        guard let name else { return nil }
+        return groups.first { $0.presets.contains { $0.name == name } }?.id
+    }
+
+    private var currentType: String { chosenType ?? type(of: model.selectedPreset) ?? groups[0].id }
+    private var currentPresets: [EQPreset] { groups.first { $0.id == currentType }?.presets ?? [] }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Picker("Type", selection: Binding(get: { currentType }, set: { chosenType = $0 })) {
+                ForEach(groups, id: \.id) { Text($0.title).tag($0.id) }
+            }
+            .labelsHidden(showLabels ? false : true)
+            .frame(width: typeWidth)
+            Picker("Préréglage", selection: Binding(
+                get: { currentPresets.contains { $0.name == model.selectedPreset } ? (model.selectedPreset ?? "") : "" },
+                set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
+                if !currentPresets.contains(where: { $0.name == model.selectedPreset }) {
+                    Text(model.selectedPreset == nil ? EQModel.customDisplayName : String(localized: "Choisir…")).tag("")
+                }
+                ForEach(currentPresets) { p in
+                    Text(p.name == model.selectedPreset ? model.presetTitle : p.displayName).tag(p.name)
+                }
+            }
+            .labelsHidden(showLabels ? false : true)
+            .frame(width: presetWidth)
+        }
+        // Préréglage changé ailleurs (raccourci, vue rapide…) : le type suit.
+        .onChange(of: model.selectedPreset) { _, _ in chosenType = nil }
+    }
+}
+
+private extension View {
+    @ViewBuilder func labelsHidden(_ hidden: Bool) -> some View {
+        if hidden { self.labelsHidden() } else { self }
+    }
+}
+
 /// Menu déroulant des préréglages, avec un menu d'actions à côté (enregistrer, renommer, partager…).
 struct PresetControls: View {
     @EnvironmentObject var model: EQModel
@@ -60,16 +118,7 @@ struct PresetControls: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Picker("Préréglage", selection: Binding(
-                get: { model.selectedPreset ?? "" },
-                set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
-                if model.selectedPreset == nil { Text(EQModel.customDisplayName).tag("") }
-                ForEach(EQModel.presetGroups, id: \.title) { g in Section(g.title) { ForEach(g.presets) { item($0) } } }
-                if !model.userPresets.isEmpty {
-                    Section("Mes préréglages") { ForEach(model.userPresets) { item($0) } }
-                }
-            }
-            .frame(width: 230)
+            PresetTypePicker()
             Menu {
                 if let name = model.selectedPreset, model.isModified, let p = model.preset(named: name) {
                     Button("Revenir à « \(p.displayName) »") { model.apply(p) }
@@ -100,9 +149,6 @@ struct PresetControls: View {
         }
     }
 
-    private func item(_ p: EQPreset) -> some View {
-        Text(p.name == model.selectedPreset ? model.presetTitle : p.displayName).tag(p.name)
-    }
 }
 
 /// Interrupteur du limiteur, avec son état : orange quand il agit (ou quand le son sature sans lui).
@@ -160,17 +206,20 @@ struct EqualizerPage: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 20) {
                 targetPicker
-                if let app = targetApp {
-                    appSettingPicker(app)
-                } else {
-                    PresetControls(nameRequest: $nameRequest)
-                }
                 Spacer()
                 if model.comparing {
                     Label("Son d'origine", systemImage: "speaker.wave.2")
                         .foregroundStyle(.orange)
                         .font(.callout.weight(.semibold))
                 }
+            }
+            HStack(spacing: 20) {
+                if let app = targetApp {
+                    appSettingPicker(app)
+                } else {
+                    PresetControls(nameRequest: $nameRequest)
+                }
+                Spacer()
             }
             HStack(spacing: 20) {
                 Picker("Mode nuit", selection: $model.leveler) {

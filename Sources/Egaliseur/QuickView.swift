@@ -101,22 +101,8 @@ struct QuickView: View {
         HStack {
             Text("Préréglage")
             Spacer()
-            Picker("Préréglage", selection: Binding(
-                get: { model.selectedPreset ?? "" },
-                set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
-                if model.selectedPreset == nil { Text(EQModel.customDisplayName).tag("") }
-                ForEach(EQModel.presetGroups, id: \.title) { g in Section(g.title) { ForEach(g.presets) { item($0) } } }
-                if !model.userPresets.isEmpty {
-                    Section("Mes préréglages") { ForEach(model.userPresets) { item($0) } }
-                }
-            }
-            .labelsHidden()
-            .frame(width: 180)
+            PresetTypePicker(typeWidth: 110, presetWidth: 150, showLabels: false)
         }
-    }
-
-    private func item(_ p: EQPreset) -> some View {
-        Text(p.name == model.selectedPreset ? model.presetTitle : p.displayName).tag(p.name)
     }
 
     private var graph: some View {

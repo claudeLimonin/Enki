@@ -75,6 +75,11 @@ final class EQModel: ObservableObject {
             EQPreset(name: "Lounge", gains: [-2, -1, 0, 2, 3, 2, 0, -1, 1, 1]),
             EQPreset(name: "Latino", gains: [3, 2, 0, 0, -1, -1, -1, 0, 3, 4]),
         ]),
+        (String(localized: "Usages"), [
+            EQPreset(name: "Podcast", gains: [-6, -4, -1, 1, 3, 4, 3, 1, -1, -3]),
+            EQPreset(name: "Cinéma", gains: [5, 4, 2, 0, -1, 1, 2, 2, 3, 2]),
+            EQPreset(name: "Jeux vidéo", gains: [3, 3, 1, 0, -1, 1, 3, 4, 3, 2]),
+        ]),
         (String(localized: "Antilles"), [
             // Zouk : basse ronde, voix douces et présentes.
             EQPreset(name: "Zouk", gains: [4, 4, 2, 0, -1, 1, 2, 2, 3, 3]),
@@ -112,15 +117,11 @@ final class EQModel: ObservableObject {
             // Tango : bandonéon et violons dans le médium.
             EQPreset(name: "Tango", gains: [1, 1, 1, 2, 3, 3, 2, 2, 1, 0]),
         ]),
-        (String(localized: "Usages"), [
-            EQPreset(name: "Podcast", gains: [-6, -4, -1, 1, 3, 4, 3, 1, -1, -3]),
-            EQPreset(name: "Cinéma", gains: [5, 4, 2, 0, -1, 1, 2, 2, 3, 2]),
-            EQPreset(name: "Jeux vidéo", gains: [3, 3, 1, 0, -1, 1, 3, 4, 3, 2]),
-        ]),
     ]
 
     /// Tous les préréglages fournis, dans l'ordre des catégories (« Plat » en premier).
     static let presets: [EQPreset] = presetGroups.flatMap(\.presets)
+
 
     // MARK: Réglage principal
 
