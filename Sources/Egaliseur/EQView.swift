@@ -153,16 +153,19 @@ struct EQView: View {
 
     /// Pied : casque et applications à gauche ; limiteur et options à droite.
     private var footer: some View {
-        HStack(spacing: 14) {
+        // Seul le menu Casque peut rétrécir (nom raccourci) : les autres éléments gardent leur taille,
+        // pour qu'aucun ne soit écrasé quand un nom de casque est long.
+        HStack(spacing: 12) {
             correctionMenu.tourAnchor(.headphone)
-            appsMenu.tourAnchor(.apps)
-            listeningMenu
-            Spacer()
+            appsMenu.tourAnchor(.apps).fixedSize().layoutPriority(1)
+            listeningMenu.fixedSize().layoutPriority(1)
+            Spacer(minLength: 0)
             if model.enabled && !model.hasError {
-                limiterBadge.tourAnchor(.limiter)
+                limiterBadge.fixedSize().layoutPriority(2).tourAnchor(.limiter)
             }
-            settingsMenu.tourAnchor(.settings)
+            settingsMenu.fixedSize().layoutPriority(2).tourAnchor(.settings)
         }
+        .font(.callout)
         .alert("7 applications au maximum", isPresented: $appLimitReached) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -263,16 +266,20 @@ struct EQView: View {
             Button("Importer un fichier ParametricEQ…") { importCorrectionFile(into: model) }
         } label: {
             Label(correctionTitle, systemImage: "headphones")
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .menuStyle(.borderlessButton)
-        .fixedSize()
+        .frame(minWidth: 90, maxWidth: 190, alignment: .leading)
         .help(model.correction.map { String(localized: "Correction de casque : \($0.name). Elle s'applique avant l'égaliseur et est mémorisée pour cette sortie audio.") }
               ?? String(localized: "Corrige le rendu de votre casque pour un son plus neutre (profils AutoEQ)."))
     }
 
     private var correctionTitle: String {
         guard let c = model.correction else { return String(localized: "Casque") }
-        let short = c.name.count > 26 ? c.name.prefix(25) + "…" : c.name
+        // Sans la source de la mesure entre parenthèses (« (Rtings) »…), visible dans l'info-bulle.
+        let base = c.name.replacingOccurrences(of: #"\s*\([^)]*\)\s*$"#, with: "", options: .regularExpression)
+        let short = base.isEmpty ? c.name : base
         return model.correctionEnabled ? String(short) : String(localized: "\(String(short)) (coupée)")
     }
 
