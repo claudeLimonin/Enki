@@ -30,6 +30,8 @@ enum MainSection: String, CaseIterable, Identifiable {
 final class Navigation: ObservableObject {
     static let shared = Navigation()
     @Published var section: MainSection = .equalizer
+    /// Plein écran : la barre de titre disparaît, le contenu a besoin d'une marge en haut.
+    @Published var isFullScreen = false
 }
 
 /// Fenêtre principale : créée à la demande, une seule à la fois.
@@ -79,6 +81,9 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         if !open { NSApp.setActivationPolicy(.accessory) }
     }
 
+    func windowDidEnterFullScreen(_ notification: Notification) { Navigation.shared.isFullScreen = true }
+    func windowDidExitFullScreen(_ notification: Notification) { Navigation.shared.isFullScreen = false }
+
     func windowWillClose(_ notification: Notification) {
         // Plus de fenêtre : l'app redevient discrète (barre des menus seulement).
         DispatchQueue.main.async { Self.returnToMenuBarIfNoWindow(except: self.window) }
@@ -93,6 +98,10 @@ struct MainView: View {
         NavigationSplitView {
             List(MainSection.allCases, selection: Binding(get: { nav.section }, set: { if let s = $0 { nav.section = s } })) { s in
                 Label(s.title, systemImage: s.symbol).tag(s)
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                // Plein écran : pas de barre de titre au-dessus, la liste ne doit pas toucher le bord.
+                Color.clear.frame(height: nav.isFullScreen ? 16 : 0)
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 260)
             .safeAreaInset(edge: .bottom) { outputSummary }
@@ -143,7 +152,7 @@ struct MainView: View {
                 .accessibilityLabel("Égaliseur")
         }
         .padding(.horizontal, 20)
-        .padding(.top, 14)
+        .padding(.top, nav.isFullScreen ? 24 : 14)
     }
 
     /// Sortie actuelle, rappelée en bas de la barre latérale : c'est elle qui décide du réglage chargé.
