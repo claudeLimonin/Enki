@@ -405,7 +405,6 @@
 "Réglées à part, non concernées par ce préréglage : %@" = "Set separately, not affected by this preset: %@";
 "Ces applications gardent leur propre réglage. Cliquez pour les modifier." = "These apps keep their own setting. Click to change them.";
 "Revenir à « %@ »" = "Revert to “%@”";
-"Importer un préréglage…" = "Import a Preset…";
 "Partager les réglages actuels…" = "Share Current Settings…";
 "Actions sur les préréglages" = "Preset actions";
 "Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume." = "Tames loud bass and lifts quiet dialogue, for listening at low volume.";
@@ -419,3 +418,16 @@
 "Effacer la recherche" = "Clear search";
 "Choisissez votre casque parmi les profils mesurés : son rendu devient plus neutre." = "Pick your headphones from the measured profiles: their sound becomes more neutral.";
 "Chercher « %@ »" = "Search “%@”";
+"Appliquer à" = "Apply to";
+"Toutes les applications" = "All apps";
+"Une seule application" = "A single app";
+"Choisissez à quelles applications s'applique le réglage" = "Choose which apps the setting applies to";
+"Sans égaliseur" = "No equalizer";
+"Remettez une autre application sur « Égaliseur principal » pour en régler une nouvelle." = "Set another app back to “Main equalizer” to set a new one.";
+"%@ suit l'égaliseur principal. Choisissez un préréglage ci-dessus pour lui donner son propre réglage." = "%@ follows the main equalizer. Choose a preset above to give it its own setting.";
+"%@ n'est pas égalisée. La correction de casque, le mode nuit et le limiteur s'appliquent quand même." = "%@ is not equalized. Headphone correction, night mode and the limiter still apply.";
+"%@ utilise le préréglage « %@ ». Pour un réglage sur mesure : réglez les curseurs dans « Toutes les applications », enregistrez-les comme préréglage, puis choisissez-le ici." = "%@ uses the “%@” preset. For a custom setting: adjust the sliders under “All apps”, save them as a preset, then choose it here.";
+"Revenir à toutes les applications" = "Back to all apps";
+"Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume. S'applique à toutes les applications." = "Tames loud bass and lifts quiet dialogue, for listening at low volume. Applies to all apps.";
+"Afficher la correction de casque sur le graphique" = "Show headphone correction on the graph";
+"Afficher le spectre en direct sur le graphique" = "Show the live spectrum on the graph";

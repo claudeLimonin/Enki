@@ -8,10 +8,12 @@ struct SpectrumPanel: View {
     @Binding var selectedBand: UUID?
     /// Version compacte (vue rapide) : ni repères, ni étiquettes, ni points déplaçables.
     var compact = false
+    /// Réglage à afficher à la place de l'égaliseur principal (réglage d'une application) : lecture seule.
+    var showing: EQSettings? = nil
 
     var body: some View {
         ResponseCurve(
-            settings: model.settings,
+            settings: showing ?? model.settings,
             correction: model.correctionEnabled && model.showCorrectionLayer ? (model.correction?.filters ?? []) : [],
             sampleRate: model.sampleRate,
             active: model.enabled,
@@ -19,11 +21,12 @@ struct SpectrumPanel: View {
             selected: selectedBand,
             onSelect: { selectedBand = $0 },
             onMove: { id, f, g in
-                guard let i = model.filters.firstIndex(where: { $0.id == id }) else { return }
+                guard showing == nil, let i = model.filters.firstIndex(where: { $0.id == id }) else { return }
                 model.filters[i].frequency = f
                 model.filters[i].gain = g
             },
             onAdd: { f, g in
+                guard showing == nil else { return }
                 if let id = model.addBand(at: f, gain: g) { selectedBand = id }
             },
             onDragEnd: { model.sortBands() },

@@ -140,17 +140,31 @@ struct EqualizerPage: View {
     @EnvironmentObject var model: EQModel
     @State private var selectedBand: UUID?
     @State private var nameRequest: PresetNameRequest?
+    /// Application ciblée (nil : toutes les applications, c'est-à-dire l'égaliseur principal).
+    @State private var target: String?
+    @State private var limitReached = false
+
+    private var targetApp: AudioApp? { target.flatMap { id in model.appPageItems.first { $0.bundleID == id } } }
+
+    /// Réglage effectivement utilisé par l'application ciblée (pour le graphique).
+    private var targetSettings: EQSettings? {
+        guard let app = targetApp else { return nil }
+        switch model.choice(for: app.bundleID) {
+        case .main: return nil
+        case .bypass: return EQSettings(mode: .graphic, gains: Array(repeating: 0, count: EQModel.frequencies.count), preamp: 0, filters: [])
+        case .preset(let name): return model.preset(named: name).map(model.settings(of:))
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 20) {
-                PresetControls(nameRequest: $nameRequest)
-                Picker("Mode nuit", selection: $model.leveler) {
-                    ForEach(OutputOptions.levelerNames.indices, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+                targetPicker
+                if let app = targetApp {
+                    appSettingPicker(app)
+                } else {
+                    PresetControls(nameRequest: $nameRequest)
                 }
-                .frame(width: 190)
-                .help("Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume.")
-                LimiterControl()
                 Spacer()
                 if model.comparing {
                     Label("Son d'origine", systemImage: "speaker.wave.2")
@@ -158,28 +172,44 @@ struct EqualizerPage: View {
                         .font(.callout.weight(.semibold))
                 }
             }
-            HStack(spacing: 16) {
-                Text("Afficher :").foregroundStyle(.secondary)
+            HStack(spacing: 20) {
+                Picker("Mode nuit", selection: $model.leveler) {
+                    ForEach(OutputOptions.levelerNames.indices, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+                }
+                .frame(width: 190)
+                .help("Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume. S'applique à toutes les applications.")
+                LimiterControl()
+                Spacer()
                 Toggle("Correction casque", isOn: $model.showCorrectionLayer)
                     .disabled(model.correction == nil)
+                    .help("Afficher la correction de casque sur le graphique")
                 Toggle("Spectre", isOn: $model.showSpectrum)
-                Spacer()
+                    .help("Afficher le spectre en direct sur le graphique")
             }
             .toggleStyle(.checkbox)
 
-            SeparateAppsNote()
+            if targetApp == nil { SeparateAppsNote() }
 
-            SpectrumPanel(selectedBand: $selectedBand)
+            SpectrumPanel(selectedBand: $selectedBand, showing: targetSettings)
                 .frame(minHeight: 240, maxHeight: 520)
 
-            Group {
-                if model.mode == .graphic {
-                    GraphicSliders()
-                } else {
-                    BandsTable(selected: $selectedBand)
+            if let app = targetApp {
+                appExplanation(app)
+            } else {
+                Group {
+                    if model.mode == .graphic {
+                        GraphicSliders()
+                    } else {
+                        BandsTable(selected: $selectedBand)
+                    }
                 }
+                .opacity(model.enabled ? 1 : 0.5)
             }
-            .opacity(model.enabled ? 1 : 0.5)
+        }
+        .alert("7 applications au maximum", isPresented: $limitReached) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Remettez une autre application sur « Égaliseur principal » pour en régler une nouvelle.")
         }
         .padding(20)
         .navigationTitle("Égaliseur")
@@ -200,6 +230,67 @@ struct EqualizerPage: View {
         }
         .sheet(item: $nameRequest) { PresetNameSheet(request: $0) }
         .onChange(of: model.mode) { _, _ in selectedBand = nil }
+        .onAppear { model.refreshApps() }
+    }
+
+    /// « Appliquer à » : toutes les applications, ou une seule.
+    private var targetPicker: some View {
+        Picker("Appliquer à", selection: $target) {
+            Text("Toutes les applications").tag(String?.none)
+            let apps = model.appPageItems
+            if !apps.isEmpty {
+                Section("Une seule application") {
+                    ForEach(apps) { app in
+                        Text(app.isPlaying ? "\(app.name)  ♪" : app.name).tag(Optional(app.bundleID))
+                    }
+                }
+            }
+        }
+        .frame(width: 290)
+        .help("Choisissez à quelles applications s'applique le réglage")
+    }
+
+    /// Réglage d'une application : égaliseur principal, sans égaliseur, ou un préréglage.
+    private func appSettingPicker(_ app: AudioApp) -> some View {
+        Picker("Réglage", selection: Binding(
+            get: { model.choice(for: app.bundleID) },
+            set: { if !model.setChoice($0, for: app) { limitReached = true } })) {
+            Text("Égaliseur principal").tag(AppChoice.main)
+            Text("Sans égaliseur").tag(AppChoice.bypass)
+            Section("Préréglages") {
+                ForEach(EQModel.presets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
+            }
+            if !model.userPresets.isEmpty {
+                Section("Mes préréglages") {
+                    ForEach(model.userPresets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
+                }
+            }
+        }
+        .frame(width: 250)
+    }
+
+    /// À la place des curseurs quand une application est ciblée.
+    private func appExplanation(_ app: AudioApp) -> some View {
+        let text: String = {
+            switch model.choice(for: app.bundleID) {
+            case .main:
+                return String(localized: "\(app.name) suit l'égaliseur principal. Choisissez un préréglage ci-dessus pour lui donner son propre réglage.")
+            case .bypass:
+                return String(localized: "\(app.name) n'est pas égalisée. La correction de casque, le mode nuit et le limiteur s'appliquent quand même.")
+            case .preset(let name):
+                return String(localized: "\(app.name) utilise le préréglage « \(model.display(name)) ». Pour un réglage sur mesure : réglez les curseurs dans « Toutes les applications », enregistrez-les comme préréglage, puis choisissez-le ici.")
+            }
+        }()
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle").foregroundStyle(.secondary)
+            Text(text).foregroundStyle(.secondary)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Revenir à toutes les applications") { target = nil }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
