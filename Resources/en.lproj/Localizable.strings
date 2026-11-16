@@ -409,3 +409,9 @@
 "Partager les réglages actuels…" = "Share Current Settings…";
 "Actions sur les préréglages" = "Preset actions";
 "Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume." = "Tames loud bass and lifts quiet dialogue, for listening at low volume.";
+"Rendu du casque" = "Headphone response";
+"Résultat" = "Result";
+"Aucun : cherchez votre casque" = "None: search for your headphones";
+"8 850 profils AutoEQ. Les mesures oratory1990 et crinacle sont les plus fiables." = "8,850 AutoEQ profiles. oratory1990 and crinacle measurements are the most reliable.";
+"sans correction" = "no correction";
+"Rendu du casque, correction et résultat" = "Headphone response, correction and result";

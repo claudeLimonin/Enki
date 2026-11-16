@@ -9,95 +9,135 @@ struct HeadphonesPage: View {
     @StateObject private var search = HeadphoneSearch()
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            Form {
-                Section {
-                    LabeledContent("Sortie actuelle") { Text(model.currentDevice?.name ?? "—") }
-                    Toggle("Corriger le rendu du casque", isOn: $model.correctionEnabled)
-                        .disabled(model.correction == nil)
-                    LabeledContent("Profil") {
-                        Text(model.correction?.name ?? String(localized: "Aucun : choisissez votre casque à droite"))
-                            .foregroundStyle(model.correction == nil ? .secondary : .primary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    HStack {
-                        Button("Importer un fichier ParametricEQ…") { importCorrectionFile(into: model) }
-                        Spacer()
-                        if model.correction != nil {
-                            Button("Retirer la correction", role: .destructive) { model.setCorrection(nil) }
-                        }
-                    }
-                } footer: {
-                    Text("La correction est mémorisée pour cette sortie uniquement.").font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Avant / après") {
-                    CorrectionCurveView(filters: model.correction?.filters ?? [], sampleRate: model.sampleRate)
-                        .frame(height: 230)
+        HStack(alignment: .top, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                outputCard
+                VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 16) {
-                        legend(.orange, dashed: false, "Rendu estimé du casque")
+                        Text("Avant / après").fontWeight(.semibold)
+                        Spacer()
+                        legend(.orange, dashed: false, "Rendu du casque")
                         legend(.purple, dashed: true, "Correction")
-                        legend(.primary, dashed: false, "Cible neutre")
+                        legend(.primary, dashed: false, "Résultat")
                     }
                     .font(.caption)
+                    CorrectionCurveView(filters: model.correction?.filters ?? [], sampleRate: model.sampleRate)
+                        .frame(minHeight: 240, maxHeight: .infinity)
                 }
             }
-            .formStyle(.grouped)
-            .frame(minWidth: 420)
+            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Trouver mon casque").font(.headline)
+            VStack(alignment: .leading, spacing: 12) {
                 if search.loadingIndex {
                     ProgressView("Chargement de la liste des casques…").controlSize(.small)
                 }
                 if let error = search.error {
                     Text(error).font(.callout).foregroundStyle(.red)
                 }
-                List {
-                    if search.query.isEmpty {
-                        Text("Tapez le nom de votre casque dans le champ de recherche, en haut à droite.")
-                            .foregroundStyle(.secondary)
-                    } else if search.results.isEmpty && !search.loadingIndex {
-                        Text("Aucun casque trouvé. Essayez avec moins de mots (ex. « HD 650 »).").foregroundStyle(.secondary)
-                    }
-                    let recommended = search.results.filter { AutoEQ.isRecommended($0.source) }
-                    let others = search.results.filter { !AutoEQ.isRecommended($0.source) }
-                    if !recommended.isEmpty {
-                        Section("Mesures recommandées") { ForEach(recommended) { row($0) } }
-                    }
-                    if !others.isEmpty {
-                        Section("Autres mesures") { ForEach(others) { row($0) } }
-                    }
-                }
-                .listStyle(.inset)
-                .frame(minHeight: 220)
-                Text("8 850 profils AutoEQ, calculés à partir de mesures en laboratoire.")
+                results
+                Text("8 850 profils AutoEQ. Les mesures oratory1990 et crinacle sont les plus fiables.")
                     .font(.caption).foregroundStyle(.secondary)
-
-                Text("Sorties mémorisées").font(.headline).padding(.top, 6)
-                List(model.rememberedDevices, id: \.id) { d in
-                    HStack {
-                        Text(d.name).lineLimit(1)
-                        Spacer()
-                        Text(d.correction.map { "\(d.preset) · \($0)" } ?? d.preset)
-                            .foregroundStyle(.secondary).lineLimit(1)
-                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Sorties mémorisées").fontWeight(.semibold)
+                    remembered
                 }
-                .listStyle(.inset)
-                .overlay {
-                    if model.rememberedDevices.isEmpty {
-                        Text("Aucune sortie mémorisée pour l'instant.").foregroundStyle(.secondary)
-                    }
-                }
-                .frame(minHeight: 100, maxHeight: 160)
             }
-            .padding(16)
-            .frame(width: 360)
+            .frame(minWidth: 260, idealWidth: 340, maxWidth: 360, maxHeight: .infinity, alignment: .top)
         }
+        .padding(20)
         .navigationTitle("Casque")
         .searchable(text: $search.query, placement: .toolbar, prompt: Text("Rechercher un casque"))
         .onAppear { search.prepare() }
+    }
+
+    // MARK: Sortie actuelle
+
+    private var outputCard: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "headphones").font(.title2)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(model.currentDevice?.name ?? String(localized: "Aucune sortie")).fontWeight(.semibold).lineLimit(1)
+                    Text("Sortie actuelle").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            Divider().padding(.leading, 14)
+            HStack {
+                Text("Corriger le rendu du casque")
+                Spacer()
+                Toggle("Corriger le rendu du casque", isOn: $model.correctionEnabled)
+                    .toggleStyle(.switch).labelsHidden()
+                    .disabled(model.correction == nil)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            Divider().padding(.leading, 14)
+            HStack {
+                Text("Profil")
+                Spacer()
+                Menu {
+                    Button("Importer un fichier ParametricEQ…") { importCorrectionFile(into: model) }
+                    if model.correction != nil {
+                        Divider()
+                        Button("Retirer la correction", role: .destructive) { model.setCorrection(nil) }
+                    }
+                } label: {
+                    Text(model.correction?.name ?? String(localized: "Aucun : cherchez votre casque"))
+                        .lineLimit(1)
+                }
+                .fixedSize()
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+        }
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+    }
+
+    // MARK: Recherche
+
+    private var results: some View {
+        let recommended = search.results.filter { AutoEQ.isRecommended($0.source) }
+        let others = search.results.filter { !AutoEQ.isRecommended($0.source) }
+        return List {
+            if search.query.isEmpty {
+                Text("Tapez le nom de votre casque dans le champ de recherche, en haut à droite.")
+                    .foregroundStyle(.secondary)
+            } else if search.results.isEmpty && !search.loadingIndex {
+                Text("Aucun casque trouvé. Essayez avec moins de mots (ex. « HD 650 »).").foregroundStyle(.secondary)
+            }
+            if !recommended.isEmpty {
+                Section("Mesures recommandées") { ForEach(recommended) { row($0) } }
+            }
+            if !others.isEmpty {
+                Section("Autres mesures") { ForEach(others) { row($0) } }
+            }
+        }
+        .listStyle(.inset)
+        .frame(minHeight: 200, maxHeight: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+    }
+
+    private var remembered: some View {
+        List(model.rememberedDevices, id: \.id) { d in
+            HStack {
+                Text(d.name).lineLimit(1)
+                Spacer()
+                Text("\(d.preset) · \(d.correction ?? String(localized: "sans correction"))")
+                    .foregroundStyle(.secondary).lineLimit(1)
+            }
+        }
+        .listStyle(.inset(alternatesRowBackgrounds: true))
+        .overlay {
+            if model.rememberedDevices.isEmpty {
+                Text("Aucune sortie mémorisée pour l'instant.").foregroundStyle(.secondary)
+            }
+        }
+        .frame(height: CGFloat(max(1, min(model.rememberedDevices.count, 4))) * 30 + 14)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
     }
 
     private func row(_ e: AutoEQ.Entry) -> some View {
@@ -113,7 +153,7 @@ struct HeadphonesPage: View {
                 }
                 Spacer()
                 if search.downloading == e.id { ProgressView().controlSize(.small) }
-                if isCurrent { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                if isCurrent { Image(systemName: "checkmark").fontWeight(.bold).foregroundStyle(Color.accentColor) }
             }
             .contentShape(Rectangle())
         }
@@ -123,43 +163,56 @@ struct HeadphonesPage: View {
 
     private func legend(_ color: Color, dashed: Bool, _ text: LocalizedStringKey) -> some View {
         HStack(spacing: 6) {
-            Rectangle().fill(.clear).frame(width: 16, height: 2)
+            Rectangle().fill(.clear).frame(width: 14, height: 2)
                 .overlay(Rectangle().stroke(color, style: StrokeStyle(lineWidth: 2, dash: dashed ? [4, 3] : [])))
             Text(text)
         }
     }
 }
 
-/// Rendu estimé du casque (inverse de la correction), correction et cible neutre.
+/// Rendu estimé du casque (inverse de la correction), correction, et résultat après correction (neutre).
 struct CorrectionCurveView: View {
     let filters: [EQFilter]
     let sampleRate: Double
 
     var body: some View {
         Canvas { ctx, size in
-            let w = size.width, h = size.height, dbMax = 15.0
-            func x(_ t: Double) -> CGFloat { CGFloat(t) * w }
+            let w = size.width, h = size.height - 18, dbMax = 15.0
+            func x(_ f: Double) -> CGFloat { CGFloat(log10(f / 20) / 3) * w }
             func y(_ db: Double) -> CGFloat { h / 2 - CGFloat(db.clamped(to: -dbMax...dbMax) / dbMax) * h / 2 }
-            for db in [-12.0, -6, 6, 12] {
+            let grid = GraphicsContext.Shading.color(.secondary.opacity(0.18))
+            for db in [-10.0, 10] {
                 var l = Path(); l.move(to: CGPoint(x: 0, y: y(db))); l.addLine(to: CGPoint(x: w, y: y(db)))
-                ctx.stroke(l, with: .color(.secondary.opacity(0.15)))
+                ctx.stroke(l, with: grid)
             }
-            var target = Path(); target.move(to: CGPoint(x: 0, y: h / 2)); target.addLine(to: CGPoint(x: w, y: h / 2))
-            ctx.stroke(target, with: .color(.primary), lineWidth: 2)
+            for f in [100.0, 1000, 10000] {
+                var l = Path(); l.move(to: CGPoint(x: x(f), y: 0)); l.addLine(to: CGPoint(x: x(f), y: h))
+                ctx.stroke(l, with: grid)
+            }
+            var zero = Path(); zero.move(to: CGPoint(x: 0, y: h / 2)); zero.addLine(to: CGPoint(x: w, y: h / 2))
+            ctx.stroke(zero, with: .color(.secondary.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            for (f, label) in [(20.0, "20 Hz"), (100, "100"), (1000, "1 k"), (10000, "10 k"), (20000, "20 kHz")] {
+                let anchor: UnitPoint = f == 20 ? .bottomLeading : (f == 20000 ? .bottomTrailing : .bottom)
+                let px = f == 20 ? 8 : (f == 20000 ? w - 8 : x(f))
+                ctx.draw(Text(label).font(.caption2).foregroundStyle(.secondary), at: CGPoint(x: px, y: size.height - 2), anchor: anchor)
+            }
+            // Résultat : rendu du casque + correction ≈ neutre.
+            ctx.stroke(zero, with: .color(.primary), lineWidth: 2.4)
             guard !filters.isEmpty else { return }
             var corr = Path(), phones = Path()
             for i in 0...160 {
-                let t = Double(i) / 160
-                let f = 20 * pow(1000, t)
+                let f = 20 * pow(1000, Double(i) / 160)
                 let db = EQMath.responseDB(filters, at: f, sampleRate: sampleRate)
-                let a = CGPoint(x: x(t), y: y(db)), b = CGPoint(x: x(t), y: y(-db))
+                let a = CGPoint(x: x(f), y: y(db)), b = CGPoint(x: x(f), y: y(-db))
                 if i == 0 { corr.move(to: a); phones.move(to: b) } else { corr.addLine(to: a); phones.addLine(to: b) }
             }
-            ctx.stroke(phones, with: .color(.orange), lineWidth: 2)
-            ctx.stroke(corr, with: .color(.purple), style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
+            ctx.stroke(phones, with: .color(.orange), lineWidth: 2.2)
+            ctx.stroke(corr, with: .color(.purple), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
         }
-        .background(.quinary, in: RoundedRectangle(cornerRadius: 6))
-        .accessibilityLabel(Text("Courbes avant et après correction"))
+        .padding(8)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
+        .accessibilityLabel(Text("Rendu du casque, correction et résultat"))
     }
 }
 
@@ -186,14 +239,14 @@ struct AppsPage: View {
                         Text(app.name)
                     }
                 }
-                .width(min: 200, ideal: 280)
+                .width(min: 160, ideal: 260)
                 TableColumn("Activité") { app in
                     HStack(spacing: 6) {
                         Circle().fill(app.isPlaying ? Color.green : Color.secondary.opacity(0.4)).frame(width: 7, height: 7)
                         Text(app.isPlaying ? "Joue du son" : "Silencieuse").foregroundStyle(.secondary)
                     }
                 }
-                .width(min: 120, ideal: 150)
+                .width(min: 110, ideal: 130)
                 TableColumn("Réglage") { app in
                     Picker("Réglage de \(app.name)", selection: Binding(
                         get: { model.choice(for: app.bundleID) },
@@ -205,7 +258,7 @@ struct AppsPage: View {
                     }
                     .labelsHidden()
                 }
-                .width(min: 200, ideal: 240)
+                .width(min: 180, ideal: 200)
             }
             Text("Une application réglée à part ne passe pas par l'égaliseur principal. La correction de casque et le mode nuit s'appliquent ensuite à toutes les applications.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -286,5 +339,13 @@ struct ListeningPage: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Écoute")
+        .toolbar {
+            // Même barre d'outils que les autres pages : la fenêtre ne change pas d'aspect.
+            ToolbarItem(placement: .primaryAction) {
+                Toggle("Égaliseur", isOn: $model.enabled)
+                    .toggleStyle(.switch)
+                    .help(model.enabled ? "Couper l'égaliseur" : "Activer l'égaliseur")
+            }
+        }
     }
 }
