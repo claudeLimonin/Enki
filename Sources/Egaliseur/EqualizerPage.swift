@@ -52,55 +52,88 @@ struct PresetNameSheet: View {
     }
 }
 
-/// Deux menus : le type de préréglage (Essentiels, Genres, Antilles…), puis les préréglages de ce type.
-struct PresetTypePicker: View {
-    @EnvironmentObject var model: EQModel
-    /// Type choisi à la main ; nil : celui du préréglage en cours.
-    @State private var chosenType: String?
+/// Choix possible dans les menus Type + Préréglage.
+struct PresetChoiceItem: Identifiable {
+    let tag: String
+    let title: String
+    var id: String { tag }
+}
+
+/// Deux menus : le type (Essentiels, Genres, Antilles…), puis les choix de ce type.
+/// Sert pour l'égaliseur principal comme pour le réglage d'une application.
+struct TypeAndChoicePicker: View {
+    let groups: [(id: String, title: String, items: [PresetChoiceItem])]
+    /// Choix en cours (tag), nil s'il n'y en a pas (réglage personnalisé).
+    let current: String?
+    /// Texte quand le choix en cours n'est pas dans la liste du type affiché.
+    let placeholder: String
+    let onSelect: (String) -> Void
     var typeWidth: CGFloat? = 170
-    var presetWidth: CGFloat? = 190
+    var choiceWidth: CGFloat? = 190
+    var choiceLabel: LocalizedStringKey = "Préréglage"
     var showLabels = true
 
-    private static let userType = "user"
+    /// Type choisi à la main ; nil : celui du choix en cours.
+    @State private var chosenType: String?
 
-    private var groups: [(id: String, title: String, presets: [EQPreset])] {
-        var list = EQModel.presetGroups.map { (id: $0.title, title: $0.title, presets: $0.presets) }
-        if !model.userPresets.isEmpty {
-            list.append((id: Self.userType, title: String(localized: "Mes préréglages"), presets: model.userPresets))
-        }
-        return list
+    private func type(of tag: String?) -> String? {
+        guard let tag else { return nil }
+        return groups.first { $0.items.contains { $0.tag == tag } }?.id
     }
-
-    private func type(of name: String?) -> String? {
-        guard let name else { return nil }
-        return groups.first { $0.presets.contains { $0.name == name } }?.id
-    }
-
-    private var currentType: String { chosenType ?? type(of: model.selectedPreset) ?? groups[0].id }
-    private var currentPresets: [EQPreset] { groups.first { $0.id == currentType }?.presets ?? [] }
+    private var currentType: String { chosenType ?? type(of: current) ?? groups.first?.id ?? "" }
+    private var items: [PresetChoiceItem] { groups.first { $0.id == currentType }?.items ?? [] }
+    private var currentInList: Bool { items.contains { $0.tag == current } }
 
     var body: some View {
         HStack(spacing: 8) {
             Picker("Type", selection: Binding(get: { currentType }, set: { chosenType = $0 })) {
                 ForEach(groups, id: \.id) { Text($0.title).tag($0.id) }
             }
-            .labelsHidden(showLabels ? false : true)
+            .labelsHidden(!showLabels)
             .frame(width: typeWidth)
-            Picker("Préréglage", selection: Binding(
-                get: { currentPresets.contains { $0.name == model.selectedPreset } ? (model.selectedPreset ?? "") : "" },
-                set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
-                if !currentPresets.contains(where: { $0.name == model.selectedPreset }) {
-                    Text(model.selectedPreset == nil ? EQModel.customDisplayName : String(localized: "Choisir…")).tag("")
-                }
-                ForEach(currentPresets) { p in
-                    Text(p.name == model.selectedPreset ? model.presetTitle : p.displayName).tag(p.name)
-                }
+            Picker(choiceLabel, selection: Binding(
+                get: { currentInList ? (current ?? "") : "" },
+                set: { onSelect($0) })) {
+                if !currentInList { Text(placeholder).tag("") }
+                ForEach(items) { Text($0.title).tag($0.tag) }
             }
-            .labelsHidden(showLabels ? false : true)
-            .frame(width: presetWidth)
+            .labelsHidden(!showLabels)
+            .frame(width: choiceWidth)
         }
-        // Préréglage changé ailleurs (raccourci, vue rapide…) : le type suit.
-        .onChange(of: model.selectedPreset) { _, _ in chosenType = nil }
+        // Choix changé ailleurs (raccourci, vue rapide…) : le type suit.
+        .onChange(of: current) { _, _ in chosenType = nil }
+    }
+}
+
+/// Type + Préréglage de l'égaliseur principal.
+struct PresetTypePicker: View {
+    @EnvironmentObject var model: EQModel
+    var typeWidth: CGFloat? = 170
+    var presetWidth: CGFloat? = 190
+    var showLabels = true
+
+    var body: some View {
+        TypeAndChoicePicker(
+            groups: model.presetChoiceGroups { p in p.name == model.selectedPreset ? model.presetTitle : p.displayName },
+            current: model.selectedPreset,
+            placeholder: model.selectedPreset == nil ? EQModel.customDisplayName : String(localized: "Choisir…"),
+            onSelect: { name in if let p = model.preset(named: name) { model.apply(p) } },
+            typeWidth: typeWidth, choiceWidth: presetWidth, showLabels: showLabels)
+    }
+}
+
+extension EQModel {
+    /// Préréglages fournis par catégorie, puis les vôtres, sous forme de choix.
+    func presetChoiceGroups(title: (EQPreset) -> String = { $0.displayName },
+                            tag: (EQPreset) -> String = { $0.name }) -> [(id: String, title: String, items: [PresetChoiceItem])] {
+        var list = Self.presetGroups.map { g in
+            (id: g.title, title: g.title, items: g.presets.map { PresetChoiceItem(tag: tag($0), title: title($0)) })
+        }
+        if !userPresets.isEmpty {
+            list.append((id: "user", title: String(localized: "Mes préréglages"),
+                         items: userPresets.map { PresetChoiceItem(tag: tag($0), title: title($0)) }))
+        }
+        return list
     }
 }
 
@@ -301,23 +334,28 @@ struct EqualizerPage: View {
 
     /// Réglage d'une application : égaliseur principal, sans égaliseur, ou un préréglage.
     private func appSettingPicker(_ app: AudioApp) -> some View {
-        Picker("Réglage", selection: Binding(
-            get: { model.choice(for: app.bundleID) },
-            set: { if !model.setChoice($0, for: app) { limitReached = true } })) {
-            Text("Égaliseur principal").tag(AppChoice.main)
-            Text("Sans égaliseur").tag(AppChoice.bypass)
-            ForEach(EQModel.presetGroups, id: \.title) { g in
-                Section(g.title) {
-                    ForEach(g.presets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
-                }
+        let main = "#main", bypass = "#bypass"
+        let groups = [(id: "#general", title: String(localized: "Général"),
+                       items: [PresetChoiceItem(tag: main, title: String(localized: "Égaliseur principal")),
+                               PresetChoiceItem(tag: bypass, title: String(localized: "Sans égaliseur"))])]
+            + model.presetChoiceGroups()
+        let current: String = {
+            switch model.choice(for: app.bundleID) {
+            case .main: return main
+            case .bypass: return bypass
+            case .preset(let name): return name
             }
-            if !model.userPresets.isEmpty {
-                Section("Mes préréglages") {
-                    ForEach(model.userPresets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
-                }
-            }
-        }
-        .frame(width: 250)
+        }()
+        return TypeAndChoicePicker(
+            groups: groups,
+            current: current,
+            placeholder: String(localized: "Choisir…"),
+            onSelect: { tag in
+                let choice: AppChoice = tag == main ? .main : (tag == bypass ? .bypass : .preset(tag))
+                if !model.setChoice(choice, for: app) { limitReached = true }
+            },
+            choiceLabel: "Réglage")
+        .id(app.bundleID)  // type remis à zéro quand on change d'application
     }
 
     /// À la place des curseurs quand une application est ciblée.
