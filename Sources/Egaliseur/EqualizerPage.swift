@@ -105,6 +105,35 @@ struct PresetControls: View {
     }
 }
 
+/// Interrupteur du limiteur, avec son état : orange quand il agit (ou quand le son sature sans lui).
+struct LimiterControl: View {
+    @EnvironmentObject var model: EQModel
+    @StateObject private var meter = LimiterMeter()
+
+    private var state: (text: String, alert: Bool) {
+        if model.limiterEnabled {
+            return meter.active ? (String(localized: "En action"), true) : (String(localized: "Au repos"), false)
+        }
+        return meter.active ? (String(localized: "Saturation !"), true) : (String(localized: "Désactivé"), false)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Toggle("Limiteur", isOn: $model.limiterEnabled)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            Text(state.text)
+                .font(.caption.weight(state.alert ? .semibold : .regular))
+                .foregroundStyle(state.alert ? Color.orange : Color.secondary)
+                .frame(minWidth: 70, alignment: .leading)
+        }
+        .fixedSize()
+        .help("Baisse le volume un court instant pour éviter la saturation. Avec le mode nuit, il agit rarement : c'est normal.")
+        .onAppear { meter.start(model.engine.processor) }
+        .onDisappear { meter.stop() }
+    }
+}
+
 // MARK: - Page Égaliseur
 
 struct EqualizerPage: View {
@@ -121,6 +150,7 @@ struct EqualizerPage: View {
                 }
                 .frame(width: 190)
                 .help("Abaisse les graves trop forts et remonte les dialogues calmes, pour écouter à faible volume.")
+                LimiterControl()
                 Spacer()
                 if model.comparing {
                     Label("Son d'origine", systemImage: "speaker.wave.2")
