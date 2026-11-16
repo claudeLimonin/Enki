@@ -631,3 +631,10 @@
 "Limiteur (crêtes au-dessus de −1 dB)" = "Limiter (peaks above −1 dB)";
 "Agit aussi sur le son :" = "Also affecting the sound:";
 "Couper : %@" = "Turn off: %@";
+"Remettre à plat" = "Reset to Flat";
+"Toutes les bandes et le préampli à 0 dB (préréglage « Plat »)." = "All bands and the preamp at 0 dB (“Flat” preset).";
+"Réinitialiser les bandes" = "Reset Bands";
+"Revenir aux bandes de départ, toutes à 0 dB." = "Go back to the starting bands, all at 0 dB.";
+"Réinitialiser l'égaliseur paramétrique ?" = "Reset the parametric equalizer?";
+"Réinitialiser" = "Reset";
+"Vos bandes actuelles seront remplacées par les bandes de départ, toutes à 0 dB. Enregistrez-les d'abord comme préréglage si vous voulez les garder." = "Your current bands will be replaced by the starting bands, all at 0 dB. Save them as a preset first if you want to keep them.";

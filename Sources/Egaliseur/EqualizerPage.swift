@@ -321,7 +321,18 @@ struct EqualizerPage: View {
             } else {
                 Group {
                     if model.mode == .graphic {
-                        GraphicSliders()
+                        VStack(alignment: .trailing, spacing: 4) {
+                            GraphicSliders()
+                            // Remise à plat de l'égaliseur graphique (toutes les bandes et le préampli à 0).
+                            Button {
+                                model.reset()
+                            } label: {
+                                Label("Remettre à plat", systemImage: "arrow.counterclockwise")
+                            }
+                            .controlSize(.small)
+                            .disabled(model.gains.allSatisfy { $0 == 0 } && model.preamp == 0)
+                            .help("Toutes les bandes et le préampli à 0 dB (préréglage « Plat »).")
+                        }
                     } else {
                         BandsTable(selected: $selectedBand)
                     }
@@ -444,6 +455,15 @@ struct GraphicSliders: View {
 struct BandsTable: View {
     @EnvironmentObject var model: EQModel
     @Binding var selected: UUID?
+    @State private var confirmReset = false
+
+    /// Bandes de départ, toutes à 0 dB (les identifiants ne comptent pas).
+    private var isDefault: Bool {
+        let d = EQFilter.defaultBands
+        return model.preamp == 0 && model.filters.count == d.count && zip(model.filters, d).allSatisfy {
+            $0.kind == $1.kind && $0.frequency == $1.frequency && $0.gain == $1.gain && $0.q == $1.q && $0.enabled == $1.enabled
+        }
+    }
 
     private func binding<T>(_ id: UUID, _ kp: WritableKeyPath<EQFilter, T>, _ fallback: T) -> Binding<T> {
         Binding(
@@ -501,9 +521,23 @@ struct BandsTable: View {
                 Text("Glissez un point du graphique, ou modifiez une valeur dans le tableau.")
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.leading, 12)
+                Spacer(minLength: 8)
+                // Remise à zéro de l'égaliseur paramétrique : bandes par défaut, toutes à 0 dB.
+                Button {
+                    confirmReset = true
+                } label: {
+                    Label("Réinitialiser les bandes", systemImage: "arrow.counterclockwise")
+                }
+                .disabled(isDefault)
+                .help("Revenir aux bandes de départ, toutes à 0 dB.")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+            .confirmationDialog("Réinitialiser l'égaliseur paramétrique ?", isPresented: $confirmReset) {
+                Button("Réinitialiser", role: .destructive) { selected = nil; model.reset() }
+            } message: {
+                Text("Vos bandes actuelles seront remplacées par les bandes de départ, toutes à 0 dB. Enregistrez-les d'abord comme préréglage si vous voulez les garder.")
+            }
         }
     }
 }
