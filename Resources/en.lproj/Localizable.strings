@@ -528,3 +528,7 @@
 "Visage non détecté. Placez-vous face à l'écran, bien éclairé, puis recommencez." = "Face not detected. Sit facing the screen, in good light, then try again.";
 "Mesure impossible. Recommencez en restant immobile." = "Measurement failed. Try again and stay still.";
 "Enki Audio n'a pas accès à la caméra. Autorisez-le dans Réglages Système → Confidentialité et sécurité → Caméra." = "Enki Audio has no camera access. Allow it in System Settings → Privacy & Security → Camera.";
+"Vous ne connaissez pas votre distance ?" = "Not sure how far you sit?";
+"La caméra la mesure en 3 secondes, puis s'éteint." = "The camera measures it in 3 seconds, then turns off.";
+"Mesurer…" = "Measure…";
+"Mesurer avec la caméra" = "Measure with the camera";

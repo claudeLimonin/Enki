@@ -416,13 +416,26 @@ struct ListeningPage: View {
                         .labelsHidden()
                         .help("Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué.")
                         .disabled(model.widening == 0)
-                        Button {
-                            calibrating = true
-                        } label: {
-                            Label("Mesurer avec la caméra…", systemImage: "person.crop.square.badge.camera")
+                        // Mesure par la caméra : encadré mis en avant, pour qu'on le remarque.
+                        HStack(spacing: 10) {
+                            Image(systemName: "camera.viewfinder")
+                                .font(.title2)
+                                .foregroundStyle(Color.accentColor)
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Vous ne connaissez pas votre distance ?").fontWeight(.medium)
+                                Text("La caméra la mesure en 3 secondes, puis s'éteint.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Button("Mesurer…") { calibrating = true }
+                                .buttonStyle(.borderedProminent)
+                                .help("La caméra s'allume 3 secondes pour estimer votre distance, puis s'éteint.")
+                                .accessibilityLabel("Mesurer avec la caméra")
                         }
-                        .controlSize(.small)
-                        .help("La caméra s'allume 3 secondes pour estimer votre distance, puis s'éteint.")
+                        .padding(10)
+                        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor.opacity(0.25)))
                         if model.widening == OutputOptions.immersiveLevel {
                             Label("Immersif : placez-vous face à l'écran, au centre, à la distance choisie.", systemImage: "person.fill.viewfinder")
                                 .font(.caption).foregroundStyle(.secondary)
