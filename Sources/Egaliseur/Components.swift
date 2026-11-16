@@ -119,3 +119,25 @@ final class LimiterMeter: ObservableObject {
         active = false
     }
 }
+
+/// Enki Audio est en version bêta : signalée dans la vue rapide, la fenêtre et « À propos ».
+enum AppInfo {
+    static let isBeta = true
+}
+
+/// Petite pastille « Bêta ».
+struct BetaBadge: View {
+    var body: some View {
+        if AppInfo.isBeta {
+            Text("Bêta")
+                .font(.caption2.weight(.bold))
+                .textCase(.uppercase)
+                .foregroundStyle(Color.accentColor)
+                .padding(.horizontal, 6).padding(.vertical, 1.5)
+                .background(Color.accentColor.opacity(0.12), in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.35)))
+                .help("Version bêta : l'app est encore en test. Vos retours sont les bienvenus.")
+                .accessibilityLabel("Version bêta")
+        }
+    }
+}

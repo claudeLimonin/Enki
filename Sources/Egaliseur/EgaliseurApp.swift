@@ -199,12 +199,20 @@ func showAboutPanel() {
     credits.append(NSAttributedString(string: "Claude Limonin", attributes: small.merging([
         .font: NSFont.boldSystemFont(ofSize: 11), .foregroundColor: NSColor.labelColor,
     ]) { $1 }))
+    if AppInfo.isBeta {
+        credits.append(NSAttributedString(string: "\n" + String(localized: "Version bêta : vos retours sont les bienvenus."), attributes: small.merging([
+            .font: NSFont.boldSystemFont(ofSize: 11), .foregroundColor: NSColor.controlAccentColor,
+        ]) { $1 }))
+    }
     credits.append(NSAttributedString(string: "\n\n" + String(localized: "Égaliseur graphique et paramétrique pour tout le son du Mac.")
         + "\n" + String(localized: "Profils de correction de casque : AutoEQ (Jaakko Pasanen)."), attributes: small))
     NSApp.activate(ignoringOtherApps: true)
     NSApp.orderFrontStandardAboutPanel(options: [
         .credits: credits,
         NSApplication.AboutPanelOptionKey(rawValue: "Copyright"): "© 2026 Claude Limonin",
+        // « 2.6 bêta » à côté du nom de l'app.
+        .applicationVersion: (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+            + (AppInfo.isBeta ? " " + String(localized: "bêta") : ""),
     ])
 }
 

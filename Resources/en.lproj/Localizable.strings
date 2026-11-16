@@ -638,3 +638,8 @@
 "Réinitialiser l'égaliseur paramétrique ?" = "Reset the parametric equalizer?";
 "Réinitialiser" = "Reset";
 "Vos bandes actuelles seront remplacées par les bandes de départ, toutes à 0 dB. Enregistrez-les d'abord comme préréglage si vous voulez les garder." = "Your current bands will be replaced by the starting bands, all at 0 dB. Save them as a preset first if you want to keep them.";
+"Bêta" = "Beta";
+"bêta" = "beta";
+"Version bêta : l'app est encore en test. Vos retours sont les bienvenus." = "Beta version: the app is still being tested. Your feedback is welcome.";
+"Version bêta" = "Beta version";
+"Version bêta : vos retours sont les bienvenus." = "Beta version: your feedback is welcome.";

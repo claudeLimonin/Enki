@@ -129,6 +129,7 @@ struct MainView: View {
         HStack(alignment: .center, spacing: 10) {
             Text(nav.section.title).font(.title2.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
+            BetaBadge()
             if nav.section == .apps {
                 Text("\(model.appRules.count) sur 7 réglées à part").foregroundStyle(.secondary)
             }

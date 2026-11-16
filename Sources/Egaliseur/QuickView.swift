@@ -47,7 +47,10 @@ struct QuickView: View {
     private var header: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(verbatim: "Enki Audio").font(.headline)
+                HStack(spacing: 6) {
+                    Text(verbatim: "Enki Audio").font(.headline)
+                    BetaBadge()
+                }
                 HStack(spacing: 4) {
                     if model.hasError {
                         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.caption)
