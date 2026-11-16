@@ -181,10 +181,30 @@ final class EQModel: ObservableObject {
     /// Volume nivelé : 0 coupé, 1 léger, 2 moyen, 3 fort.
     @Published var leveler: Int { didSet { if leveler != oldValue { push(); save() } } }
     @Published var crossfeed: Bool { didSet { if crossfeed != oldValue { push(); save() } } }
-    @Published var mono: Bool { didSet { if mono != oldValue { push(); save() } } }
+    @Published var mono: Bool {
+        didSet {
+            guard mono != oldValue else { return }
+            // Mono et élargissement s'excluent : en mono, il n'y a plus de stéréo à élargir.
+            if mono, widening > 0, !loading {
+                lastWidening = widening
+                widening = 0
+                notify(String(localized: "Mono : élargissement stéréo coupé"), symbol: "speaker.wave.1.fill")
+            }
+            push(); save()
+        }
+    }
     @Published var balance: Double { didSet { if balance != oldValue { push(); save() } } }
     /// Élargissement stéréo pour haut-parleurs : 0 coupé, 1 léger, 2 moyen, 3 fort. Mémorisé par sortie.
-    @Published var widening: Int { didSet { if widening != oldValue { push(); save() } } }
+    @Published var widening: Int {
+        didSet {
+            guard widening != oldValue else { return }
+            if widening > 0, mono, !loading {
+                mono = false
+                notify(String(localized: "Élargissement stéréo : mono coupé"), symbol: "arrow.left.and.right")
+            }
+            push(); save()
+        }
+    }
     /// La sortie actuelle est des haut-parleurs (et non un casque) : décide de la tuile proposée.
     @Published private(set) var outputIsSpeakers = false
     private var lastWidening = 2

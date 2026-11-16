@@ -400,9 +400,9 @@ struct ListeningPage: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        if model.mono, model.widening > 0 {
-                            Label("Sans effet tant que le mono est activé (il n'y a plus de stéréo à élargir).", systemImage: "exclamationmark.circle")
-                                .font(.caption).foregroundStyle(.orange)
+                        if model.mono {
+                            Label("Choisir un niveau coupe le mono : en mono, il n'y a pas de stéréo à élargir.", systemImage: "info.circle")
+                                .font(.caption).foregroundStyle(.secondary)
                         } else if !model.outputIsSpeakers {
                             Label("La sortie actuelle semble être un casque : préférez la spatialisation casque.", systemImage: "headphones")
                                 .font(.caption).foregroundStyle(.secondary)

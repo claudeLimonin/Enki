@@ -494,3 +494,6 @@
 "Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. Mémorisé pour cette sortie." = "For speakers close to each other, like a MacBook's: the sound feels wider, voices stay centered. Remembered for this output.";
 "La sortie actuelle semble être un casque : préférez la spatialisation casque." = "The current output looks like headphones: prefer headphone spatialization.";
 "Sans effet tant que le mono est activé (il n'y a plus de stéréo à élargir)." = "No effect while mono is on (there is no stereo left to widen).";
+"Mono : élargissement stéréo coupé" = "Mono: stereo widening turned off";
+"Élargissement stéréo : mono coupé" = "Stereo widening: mono turned off";
+"Choisir un niveau coupe le mono : en mono, il n'y a pas de stéréo à élargir." = "Choosing a level turns mono off: in mono there is no stereo to widen.";
