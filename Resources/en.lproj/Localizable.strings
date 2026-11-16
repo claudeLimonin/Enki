@@ -497,3 +497,12 @@
 "Mono : élargissement stéréo coupé" = "Mono: stereo widening turned off";
 "Élargissement stéréo : mono coupé" = "Stereo widening: mono turned off";
 "Choisir un niveau coupe le mono : en mono, il n'y a pas de stéréo à élargir." = "Choosing a level turns mono off: in mono there is no stereo to widen.";
+"Proche" = "Close";
+"Normale" = "Normal";
+"Loin" = "Far";
+"≈ 40 cm" = "≈ 16 in";
+"≈ 60 cm" = "≈ 24 in";
+"≈ 1 m" = "≈ 3 ft";
+"Distance d'écoute" = "Listening distance";
+"Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué." = "Distance between you and the screen: from afar, the speakers seem closer together, so the widening is stronger.";
+"Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. La distance d'écoute ajuste l'effet. Mémorisé pour cette sortie." = "For speakers close to each other, like a MacBook's: the sound feels wider, voices stay centered. The listening distance adjusts the effect. Remembered for this output.";

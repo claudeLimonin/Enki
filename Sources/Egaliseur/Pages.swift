@@ -389,7 +389,7 @@ struct ListeningPage: View {
                     toggleRow("Spatialisation casque", isOn: $model.crossfeed)
                 }
                 ListeningCard(title: "Haut-parleurs",
-                              footer: "Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. Mémorisé pour cette sortie.") {
+                              footer: "Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. La distance d'écoute ajuste l'effet. Mémorisé pour cette sortie.") {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("Élargissement stéréo")
@@ -400,6 +400,20 @@ struct ListeningPage: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
+                        Divider().padding(.vertical, 2)
+                        HStack {
+                            Text("Distance d'écoute")
+                            Spacer()
+                            Text(OutputOptions.distanceHints[model.listeningDistance])
+                                .foregroundStyle(.secondary).monospacedDigit()
+                        }
+                        Picker("Distance d'écoute", selection: $model.listeningDistance) {
+                            ForEach(0..<OutputOptions.distanceNames.count, id: \.self) { Text(OutputOptions.distanceNames[$0]).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .help("Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué.")
+                        .disabled(model.widening == 0)
                         if model.mono {
                             Label("Choisir un niveau coupe le mono : en mono, il n'y a pas de stéréo à élargir.", systemImage: "info.circle")
                                 .font(.caption).foregroundStyle(.secondary)

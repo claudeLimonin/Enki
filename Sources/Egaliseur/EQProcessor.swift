@@ -362,6 +362,7 @@ private struct OutputDSP {
         crossNorm = 1 / (1 + crossMix)
         mono = o.mono
         widen = OutputOptions.wideningAmounts[o.widening.clamped(to: 0...3)]
+            * OutputOptions.distanceFactors[o.distance.clamped(to: 0...2)]
         widenCoef = 1 - exp(-2 * Double.pi * OutputOptions.wideningCutoff / sampleRate)
         let b = o.balance.clamped(to: -1...1)
         gainL = b > 0 ? 1 - b : 1

@@ -84,6 +84,19 @@ struct OutputOptions: Equatable {
     /// Sous cette fréquence, les côtés ne sont pas renforcés : graves intacts, pas d'effet de phase.
     static let wideningCutoff = 200.0
 
+    /// Distance d'écoute : 0 proche (~40 cm), 1 normale (~60 cm), 2 loin (~1 m).
+    var distance = 1
+    /// Plus on s'éloigne, plus les deux haut-parleurs paraissent proches l'un de l'autre
+    /// (angle d'environ 40° à 40 cm, 28° à 60 cm, 17° à 1 m pour 30 cm d'écart) :
+    /// l'élargissement est donc plus fort de loin et plus doux de près.
+    static let distanceFactors = [0.75, 1.0, 1.4]
+    static var distanceNames: [String] {
+        [String(localized: "Proche"), String(localized: "Normale"), String(localized: "Loin")]
+    }
+    static var distanceHints: [String] {
+        [String(localized: "≈ 40 cm"), String(localized: "≈ 60 cm"), String(localized: "≈ 1 m")]
+    }
+
     /// Fréquences de séparation du mode nuit : graves | voix | aigus.
     static let nightCrossovers = (200.0, 4000.0)
 

@@ -30,6 +30,8 @@ struct DeviceSetting: Codable, Equatable {
     var correctionOn: Bool? = nil
     /// Élargissement stéréo de cette sortie (absent : coupé).
     var widening: Int? = nil
+    /// Distance d'écoute de cette sortie (absent : normale).
+    var distance: Int? = nil
 }
 
 /// Ce qu'une application reçoit : l'égaliseur principal, rien, ou un préréglage.
@@ -205,6 +207,8 @@ final class EQModel: ObservableObject {
             push(); save()
         }
     }
+    /// Distance d'écoute (0 proche, 1 normale, 2 loin) : ajuste l'élargissement. Mémorisée par sortie.
+    @Published var listeningDistance: Int { didSet { if listeningDistance != oldValue { push(); save() } } }
     /// La sortie actuelle est des haut-parleurs (et non un casque) : décide de la tuile proposée.
     @Published private(set) var outputIsSpeakers = false
     private var lastWidening = 2
@@ -266,7 +270,7 @@ final class EQModel: ObservableObject {
     }
 
     var outputOptions: OutputOptions {
-        OutputOptions(leveler: leveler, crossfeed: crossfeed, mono: mono, balance: balance, widening: widening)
+        OutputOptions(leveler: leveler, crossfeed: crossfeed, mono: mono, balance: balance, widening: widening, distance: listeningDistance)
     }
 
     // MARK: Correction de casque
@@ -342,6 +346,7 @@ final class EQModel: ObservableObject {
         mono = defaults.bool(forKey: "mono")
         balance = (defaults.object(forKey: "balance") as? Double ?? 0).clamped(to: -1...1)
         widening = defaults.integer(forKey: "widening").clamped(to: 0...3)
+        listeningDistance = (defaults.object(forKey: "listeningDistance") as? Int ?? 1).clamped(to: 0...2)
         hotkeysEnabled = defaults.object(forKey: "hotkeys") as? Bool ?? true
         notificationsEnabled = defaults.object(forKey: "notifications") as? Bool ?? true
         showSpectrum = defaults.object(forKey: "showSpectrum") as? Bool ?? true
@@ -603,6 +608,7 @@ final class EQModel: ObservableObject {
             // La correction d'un casque ne s'applique pas à un autre appareil, ni l'élargissement.
             correction = nil
             widening = 0
+            listeningDistance = 1
             return
         }
         applyingPreset = true
@@ -617,6 +623,7 @@ final class EQModel: ObservableObject {
         correction = setting.correction
         correctionEnabled = setting.correctionOn ?? true
         widening = setting.widening ?? 0
+        listeningDistance = setting.distance ?? 1
     }
 
     /// Nombre de sorties ayant un réglage mémorisé (pour l'affichage).
@@ -794,6 +801,7 @@ final class EQModel: ObservableObject {
         defaults.set(leveler, forKey: "leveler")
         defaults.set(crossfeed, forKey: "crossfeed")
         defaults.set(widening, forKey: "widening")
+        defaults.set(listeningDistance, forKey: "listeningDistance")
         defaults.set(mono, forKey: "mono")
         defaults.set(balance, forKey: "balance")
         defaults.set(hotkeysEnabled, forKey: "hotkeys")
@@ -811,7 +819,7 @@ final class EQModel: ObservableObject {
                 preset: selectedPreset, modified: isModified,
                 mode: mode, filters: filters,
                 correction: correction, correctionOn: correctionEnabled,
-                widening: widening)
+                widening: widening, distance: listeningDistance)
         }
         encode(deviceSettings, "deviceSettings")
     }
