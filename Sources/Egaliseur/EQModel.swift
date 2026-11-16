@@ -345,7 +345,7 @@ final class EQModel: ObservableObject {
         crossfeed = defaults.bool(forKey: "crossfeed")
         mono = defaults.bool(forKey: "mono")
         balance = (defaults.object(forKey: "balance") as? Double ?? 0).clamped(to: -1...1)
-        widening = defaults.integer(forKey: "widening").clamped(to: 0...3)
+        widening = defaults.integer(forKey: "widening").clamped(to: 0...4)
         listeningDistance = (defaults.object(forKey: "listeningDistance") as? Int ?? 1).clamped(to: 0...2)
         hotkeysEnabled = defaults.object(forKey: "hotkeys") as? Bool ?? true
         notificationsEnabled = defaults.object(forKey: "notifications") as? Bool ?? true

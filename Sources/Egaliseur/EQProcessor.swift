@@ -344,6 +344,9 @@ private struct OutputDSP {
     var mono = false
     var gainL = 1.0, gainR = 1.0
     var widen = 0.0, widenCoef = 0.0
+    /// Annulation de diaphonie (niveau Immersif).
+    var ctc = false
+    var ctcDelay = 0.0, ctcGain = 0.0, ctcLow = 0.0, ctcHigh = 0.0
 
     init() {}
 
@@ -361,8 +364,14 @@ private struct OutputDSP {
         crossMix = 0.45
         crossNorm = 1 / (1 + crossMix)
         mono = o.mono
-        widen = OutputOptions.wideningAmounts[o.widening.clamped(to: 0...3)]
+        widen = OutputOptions.wideningAmounts[o.widening.clamped(to: 0...4)]
             * OutputOptions.distanceFactors[o.distance.clamped(to: 0...2)]
+        ctc = o.widening == OutputOptions.immersiveLevel
+        ctcDelay = (OutputOptions.crosstalkDelay(distance: o.distance) * sampleRate)
+            .clamped(to: 1...Double(EQProcessor.ctcSize - 2))
+        ctcGain = OutputOptions.ctcGain
+        ctcLow = 1 - exp(-2 * Double.pi * OutputOptions.ctcBand.low / sampleRate)
+        ctcHigh = 1 - exp(-2 * Double.pi * OutputOptions.ctcBand.high / sampleRate)
         widenCoef = 1 - exp(-2 * Double.pi * OutputOptions.wideningCutoff / sampleRate)
         let b = o.balance.clamped(to: -1...1)
         gainL = b > 0 ? 1 - b : 1
@@ -413,6 +422,11 @@ final class EQProcessor {
     private var crossLP = (0.0, 0.0)
     /// Passe-bas des « côtés » de l'élargissement stéréo.
     private var sideLP = 0.0
+    /// Ligne à retard de l'annulation de diaphonie (côtés déjà traités) et filtres de sa boucle.
+    static let ctcSize = 64
+    private let ctcBuf: UnsafeMutablePointer<Double>
+    private var ctcPos = 0
+    private var ctcBand = (0.0, 0.0)
     private var dirty = false
     private var resetRequested = false
 
@@ -432,6 +446,9 @@ final class EQProcessor {
         scope.initialize(repeating: 0, count: Self.scopeSize)
         scopeWritten = .allocate(capacity: 1)
         scopeWritten.initialize(to: 0)
+        ctcBuf = .allocate(capacity: Self.ctcSize)
+        ctcBuf.initialize(repeating: 0, count: Self.ctcSize)
+        wireMemory(ctcBuf, Self.ctcSize * MemoryLayout<Double>.stride)
         for (p, n) in [(UnsafeRawPointer(scope), Self.scopeSize * 4), (UnsafeRawPointer(lock), MemoryLayout<os_unfair_lock>.size),
                        (UnsafeRawPointer(meter), 4), (UnsafeRawPointer(timing), 16), (UnsafeRawPointer(levelMeter), 12),
                        (UnsafeRawPointer(scopeWritten), 8)] {
@@ -449,6 +466,7 @@ final class EQProcessor {
         timing.deallocate()
         scope.deallocate()
         scopeWritten.deallocate()
+        ctcBuf.deallocate()
     }
 
     /// Thread principal. `sources[0]` : son général ; suivantes : applications, dans l'ordre des taps.
@@ -555,6 +573,9 @@ final class EQProcessor {
                 xoverR.reset()
                 crossLP = (0, 0)
                 sideLP = 0
+                ctcBuf.update(repeating: 0, count: Self.ctcSize)
+                ctcPos = 0
+                ctcBand = (0, 0)
                 resetRequested = false
             }
             os_unfair_lock_unlock(lock)
@@ -597,6 +618,8 @@ final class EQProcessor {
         var levelDB = (0.0, 0.0, 0.0)
         var (lpL, lpR) = crossLP
         var lpS = sideLP
+        var cPos = ctcPos, (cLow, cHigh) = ctcBand
+        let cBuf = ctcBuf, cSize = Self.ctcSize
         var written = scopeWritten.pointee
         let scopeMask = Self.scopeSize - 1
 
@@ -625,6 +648,21 @@ final class EQProcessor {
                 lpS += (side - lpS) * o.widenCoef
                 let wide = side + o.widen * (side - lpS)
                 (l, r) = (mid + wide, mid - wide)
+            }
+            // Immersif : annulation de diaphonie (RACE) sur les côtés. Les côtés reçoivent leur propre
+            // sortie retardée du décalage entre les deux oreilles, limitée à 250 Hz – 6 kHz (stable :
+            // gain de boucle < 1). Le centre n'est pas touché.
+            if o.ctc, !o.mono {
+                let mid = 0.5 * (l + r), side = 0.5 * (l - r)
+                let whole = Int(o.ctcDelay), frac = o.ctcDelay - Double(whole)
+                let a = cBuf[(cPos - whole + cSize) % cSize], b = cBuf[(cPos - whole - 1 + cSize) % cSize]
+                let delayed = a + (b - a) * frac
+                cLow += (delayed - cLow) * o.ctcLow
+                cHigh += ((delayed - cLow) - cHigh) * o.ctcHigh
+                let out = side + o.ctcGain * cHigh + Self.antiDenormal
+                cBuf[cPos] = out
+                cPos = (cPos + 1) % cSize
+                (l, r) = (mid + out, mid - out)
             }
             if o.mono {
                 let m = 0.5 * (l + r)
@@ -687,6 +725,14 @@ final class EQProcessor {
         levelMeter[2] = o.leveler ? Float(levelDB.2) : .nan
         crossLP = lpL.isFinite && lpR.isFinite ? (lpL, lpR) : (0, 0)
         sideLP = lpS.isFinite ? lpS : 0
+        if cLow.isFinite, cHigh.isFinite {
+            ctcPos = cPos
+            ctcBand = (cLow, cHigh)
+        } else {
+            ctcBuf.update(repeating: 0, count: cSize)
+            ctcPos = 0
+            ctcBand = (0, 0)
+        }
         let m = Float(minGain)
         if m < meter.pointee { meter.pointee = m }
     }

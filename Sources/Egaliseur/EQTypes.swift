@@ -76,11 +76,34 @@ struct OutputOptions: Equatable {
     var mono = false
     /// −1 (tout à gauche) … 0 (centre) … +1 (tout à droite).
     var balance = 0.0
-    /// Élargissement stéréo (haut-parleurs proches, comme ceux d'un portable) : 0 coupé, 1 léger, 2 moyen, 3 fort.
+    /// Élargissement stéréo (haut-parleurs proches, comme ceux d'un portable) :
+    /// 0 coupé, 1 léger, 2 moyen, 3 fort, 4 immersif (annulation de diaphonie).
     var widening = 0
 
-    /// Renfort des « côtés » (différence gauche − droite) pour Léger, Moyen, Fort.
-    static let wideningAmounts = [0.0, 0.4, 0.8, 1.3]
+    /// Niveau « Immersif » : annulation de diaphonie plutôt que simple renfort.
+    static let immersiveLevel = 4
+    /// Renfort des « côtés » (différence gauche − droite) pour Léger, Moyen, Fort (Immersif : aucun).
+    static let wideningAmounts = [0.0, 0.4, 0.8, 1.3, 0.0]
+    static var wideningNames: [String] {
+        [String(localized: "Coupé"), String(localized: "Léger"), String(localized: "Moyen"), String(localized: "Fort"), String(localized: "Immersif")]
+    }
+
+    /// Annulation de diaphonie : chaque oreille entend aussi le haut-parleur opposé, un peu plus tard.
+    /// On envoie l'inverse de ce « débordement », retardé d'autant, pour l'effacer (méthode RACE,
+    /// appliquée aux côtés seulement : voix au centre intactes).
+    static let ctcGain = 0.7
+    static let ctcBand = (low: 250.0, high: 6000.0)
+    /// Écart supposé entre les haut-parleurs (MacBook) et demi-écart entre les oreilles, en mètres.
+    static let speakerSpacing = 0.30, halfEarSpacing = 0.0875
+    static let distanceMeters = [0.4, 0.6, 1.0]
+
+    /// Retard (secondes) entre le son du haut-parleur proche et celui du haut-parleur opposé, pour une oreille.
+    static func crosstalkDelay(distance: Int) -> Double {
+        let d = distanceMeters[distance.clamped(to: 0...2)], half = speakerSpacing / 2
+        let far = (d * d + pow(half + halfEarSpacing, 2)).squareRoot()
+        let near = (d * d + pow(half - halfEarSpacing, 2)).squareRoot()
+        return (far - near) / 343
+    }
     /// Sous cette fréquence, les côtés ne sont pas renforcés : graves intacts, pas d'effet de phase.
     static let wideningCutoff = 200.0
 

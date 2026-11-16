@@ -119,7 +119,7 @@ struct QuickView: View {
             // Haut-parleurs : élargissement stéréo. Casque : spatialisation.
             if model.outputIsSpeakers {
                 ControlTile(title: String(localized: "Élargissement"), symbol: "arrow.left.and.right",
-                            detail: model.widening > 0 ? OutputOptions.levelerNames[model.widening] : String(localized: "Désactivé"),
+                            detail: model.widening > 0 ? OutputOptions.wideningNames[model.widening] : String(localized: "Désactivé"),
                             isOn: model.widening > 0) { model.toggleWidening() }
             } else {
                 ControlTile(title: String(localized: "Spatialisation"), symbol: "headphones",

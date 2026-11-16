@@ -506,3 +506,6 @@
 "Distance d'écoute" = "Listening distance";
 "Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué." = "Distance between you and the screen: from afar, the speakers seem closer together, so the widening is stronger.";
 "Pour des haut-parleurs proches l'un de l'autre, comme ceux d'un MacBook : le son paraît plus large, les voix restent au centre. La distance d'écoute ajuste l'effet. Mémorisé pour cette sortie." = "For speakers close to each other, like a MacBook's: the sound feels wider, voices stay centered. The listening distance adjusts the effect. Remembered for this output.";
+"Immersif" = "Immersive";
+"Léger à Fort : la stéréo est élargie. Immersif : le son semble sortir bien au-delà du Mac, à condition d'être assis face à l'écran, au centre." = "Light to Strong: the stereo image is widened. Immersive: the sound seems to come from well beyond the Mac, as long as you sit centered in front of the screen.";
+"Immersif : placez-vous face à l'écran, au centre, à la distance choisie." = "Immersive: sit centered in front of the screen, at the chosen distance.";

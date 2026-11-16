@@ -396,8 +396,9 @@ struct ListeningPage: View {
                             Spacer()
                         }
                         Picker("Élargissement stéréo", selection: $model.widening) {
-                            ForEach(0..<OutputOptions.levelerNames.count, id: \.self) { Text(OutputOptions.levelerNames[$0]).tag($0) }
+                            ForEach(0..<OutputOptions.wideningNames.count, id: \.self) { Text(OutputOptions.wideningNames[$0]).tag($0) }
                         }
+                        .help("Léger à Fort : la stéréo est élargie. Immersif : le son semble sortir bien au-delà du Mac, à condition d'être assis face à l'écran, au centre.")
                         .pickerStyle(.segmented)
                         .labelsHidden()
                         Divider().padding(.vertical, 2)
@@ -414,6 +415,10 @@ struct ListeningPage: View {
                         .labelsHidden()
                         .help("Distance entre vous et l'écran : de loin, les haut-parleurs paraissent plus proches l'un de l'autre, l'élargissement est donc plus marqué.")
                         .disabled(model.widening == 0)
+                        if model.widening == OutputOptions.immersiveLevel {
+                            Label("Immersif : placez-vous face à l'écran, au centre, à la distance choisie.", systemImage: "person.fill.viewfinder")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         if model.mono {
                             Label("Choisir un niveau coupe le mono : en mono, il n'y a pas de stéréo à élargir.", systemImage: "info.circle")
                                 .font(.caption).foregroundStyle(.secondary)
