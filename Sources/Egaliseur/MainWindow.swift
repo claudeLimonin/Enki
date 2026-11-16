@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Sections de la fenêtre principale (barre latérale).
@@ -38,6 +39,7 @@ final class Navigation: ObservableObject {
 final class MainWindowController: NSObject, NSWindowDelegate {
     static let shared = MainWindowController()
     private var window: NSWindow?
+    private var titleObserver: AnyCancellable?
 
     func show(_ section: MainSection? = nil) {
         if let section { Navigation.shared.section = section }
@@ -49,12 +51,18 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let w = NSWindow(contentViewController: host)
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.toolbarStyle = .unified
-            w.setContentSize(NSSize(width: 1040, height: 700))
             w.contentMinSize = NSSize(width: 860, height: 560)
-            w.setFrameAutosaveName("EnkiAudioMainWindow")
+            w.setContentSize(NSSize(width: 1040, height: 700))
             w.isReleasedWhenClosed = false
             w.delegate = self
-            if w.frame.origin == .zero { w.center() }
+            if !w.setFrameUsingName("EnkiAudioMainWindow") { w.center() }
+            w.setFrameAutosaveName("EnkiAudioMainWindow")
+            // Fenêtre mémorisée trop grande ou hors écran : retour à la taille par défaut.
+            if let screen = (w.screen ?? NSScreen.main)?.visibleFrame, !screen.contains(w.frame) {
+                w.setContentSize(NSSize(width: 1040, height: 700))
+                w.center()
+            }
+            titleObserver = Navigation.shared.$section.sink { [weak w] in w?.title = $0.title }
             window = w
         }
         NSApp.setActivationPolicy(.regular)
@@ -99,6 +107,7 @@ struct MainView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .frame(minWidth: 860, maxWidth: .infinity, minHeight: 560, maxHeight: .infinity)
     }
 
     /// Sortie actuelle, rappelée en bas de la barre latérale : c'est elle qui décide du réglage chargé.

@@ -78,7 +78,7 @@ struct PresetPicker: View {
         } label: {
             Text(model.presetTitle).lineLimit(1)
         }
-        .frame(minWidth: 150, maxWidth: 220)
+        .frame(minWidth: 110, maxWidth: 170)
         .help("Préréglage")
         .confirmationDialog("Supprimer « \(model.selectedUserPreset?.name ?? "") » ?", isPresented: $confirmDelete) {
             Button("Supprimer", role: .destructive) { model.deleteSelected() }
@@ -116,7 +116,7 @@ struct EqualizerPage: View {
             SeparateAppsNote()
 
             SpectrumPanel(selectedBand: $selectedBand)
-                .frame(minHeight: 240, maxHeight: .infinity)
+                .frame(minHeight: 240, maxHeight: 520)
 
             Group {
                 if model.mode == .graphic {

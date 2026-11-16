@@ -246,8 +246,8 @@ struct SeparateAppsNote: View {
                     Text("Réglées à part, non concernées par ce préréglage : \(list)")
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "chevron.right").foregroundStyle(.tertiary)
                 }
                 .font(.caption)
