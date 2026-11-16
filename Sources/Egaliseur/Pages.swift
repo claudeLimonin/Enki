@@ -8,6 +8,7 @@ struct HeadphonesPage: View {
     @EnvironmentObject var model: EQModel
     @StateObject private var search = HeadphoneSearch()
     @FocusState private var searchFocused: Bool
+    @State private var measuring = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
@@ -74,7 +75,9 @@ struct HeadphonesPage: View {
         }
         .padding(20)
         .navigationTitle("Casque")
+        .sheet(isPresented: $measuring) { MeasurementSheet() }
         .onAppear {
+            model.refreshOutputKind()
             search.prepare()
             // Sans correction : on invite directement à chercher.
             if model.correction == nil { searchFocused = true }
@@ -120,6 +123,24 @@ struct HeadphonesPage: View {
                 .fixedSize()
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
+            if model.outputIsSpeakers {
+                Divider().padding(.leading, 14)
+                // Haut-parleurs : correction mesurée à la place d'écoute (micro de l'iPhone).
+                HStack(spacing: 10) {
+                    Image(systemName: "waveform.badge.mic").font(.title3).foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Corriger ces haut-parleurs").fontWeight(.medium)
+                        Text("Mesure à votre place d'écoute avec le micro de votre iPhone.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Mesurer…") { measuring = true }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityLabel("Mesurer les haut-parleurs")
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+            }
         }
         .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))

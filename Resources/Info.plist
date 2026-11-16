@@ -52,6 +52,8 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Claude Limonin</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Enki Audio utilise un micro (par exemple celui de votre iPhone) uniquement pendant la mesure de vos haut-parleurs, quand vous la lancez. Rien n'est enregistré ni envoyé : seule la réponse en fréquence est calculée, sur ce Mac.</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

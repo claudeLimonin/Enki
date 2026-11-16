@@ -3,3 +3,4 @@
 "CFBundleDisplayName" = "Enki Audio";
 "CFBundleName" = "Enki Audio";
 "NSCameraUsageDescription" = "Enki Audio uses the camera for a few seconds, only when you ask, to estimate your distance from the screen and tune stereo widening. No image is recorded or sent.";
+"NSMicrophoneUsageDescription" = "Enki Audio uses a microphone (such as your iPhone's) only while measuring your speakers, when you start it. Nothing is recorded or sent: only the frequency response is computed, on this Mac.";
