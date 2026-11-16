@@ -311,8 +311,12 @@ struct AppsPage: View {
                         set: { if !model.setChoice($0, for: app) { limitReached = true } })) {
                         Text("Égaliseur principal").tag(AppChoice.main)
                         Text("Sans égalisation").tag(AppChoice.bypass)
-                        Divider()
-                        ForEach(model.allPresets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
+                        ForEach(EQModel.presetGroups, id: \.title) { g in
+                            Section(g.title) { ForEach(g.presets) { Text($0.displayName).tag(AppChoice.preset($0.name)) } }
+                        }
+                        if !model.userPresets.isEmpty {
+                            Section("Mes préréglages") { ForEach(model.userPresets) { Text($0.displayName).tag(AppChoice.preset($0.name)) } }
+                        }
                     }
                     .labelsHidden()
                 }

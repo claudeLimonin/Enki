@@ -105,7 +105,7 @@ struct QuickView: View {
                 get: { model.selectedPreset ?? "" },
                 set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
                 if model.selectedPreset == nil { Text(EQModel.customDisplayName).tag("") }
-                Section("Préréglages") { ForEach(EQModel.presets) { item($0) } }
+                ForEach(EQModel.presetGroups, id: \.title) { g in Section(g.title) { ForEach(g.presets) { item($0) } } }
                 if !model.userPresets.isEmpty {
                     Section("Mes préréglages") { ForEach(model.userPresets) { item($0) } }
                 }

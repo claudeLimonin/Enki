@@ -49,32 +49,78 @@ final class EQModel: ObservableObject {
     static let maxParametricBands = 20
     static let maxAppRules = EQProcessor.maxSources - 1
 
-    static let presets: [EQPreset] = [
-        EQPreset(name: "Plat", gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-        EQPreset(name: "Basses renforcées", gains: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0]),
-        EQPreset(name: "Aigus renforcés", gains: [0, 0, 0, 0, 0, 1, 2, 4, 5, 6]),
-        EQPreset(name: "Voix", gains: [-2, -2, -1, 1, 3, 4, 3, 1, 0, -1]),
-        EQPreset(name: "Loudness", gains: [6, 4, 1, 0, -1, -1, 0, 1, 3, 5]),
-        EQPreset(name: "Rock", gains: [5, 4, 2, 0, -1, -1, 1, 3, 4, 5]),
-        EQPreset(name: "Pop", gains: [-1, 0, 2, 3, 4, 3, 1, 0, -1, -1]),
-        EQPreset(name: "Jazz", gains: [3, 2, 1, 2, -1, -1, 0, 1, 2, 3]),
-        EQPreset(name: "Classique", gains: [4, 3, 2, 1, 0, 0, 0, 1, 2, 3]),
-        EQPreset(name: "Électro", gains: [5, 4, 1, 0, -2, 1, 0, 1, 4, 5]),
-        EQPreset(name: "Hip-hop", gains: [6, 5, 2, 1, -1, -1, 1, 1, 2, 3]),
-        EQPreset(name: "R&B", gains: [5, 6, 3, -1, -2, 1, 2, 2, 3, 3]),
-        EQPreset(name: "Métal", gains: [4, 3, 1, -1, -2, 0, 2, 4, 4, 3]),
-        EQPreset(name: "Acoustique", gains: [3, 2, 1, 1, 2, 1, 2, 3, 2, 1]),
-        EQPreset(name: "Piano", gains: [1, 1, 0, 2, 3, 1, 3, 4, 3, 2]),
-        EQPreset(name: "Lounge", gains: [-2, -1, 0, 2, 3, 2, 0, -1, 1, 1]),
-        EQPreset(name: "Latino", gains: [3, 2, 0, 0, -1, -1, -1, 0, 3, 4]),
-        // Usages
-        EQPreset(name: "Podcast", gains: [-6, -4, -1, 1, 3, 4, 3, 1, -1, -3]),
-        EQPreset(name: "Cinéma", gains: [5, 4, 2, 0, -1, 1, 2, 2, 3, 2]),
-        EQPreset(name: "Jeux vidéo", gains: [3, 3, 1, 0, -1, 1, 3, 4, 3, 2]),
-        // Petits haut-parleurs : pas de grave profond (qu'ils ne peuvent pas rendre), plutôt le haut-grave.
-        EQPreset(name: "Petits haut-parleurs", gains: [0, 2, 4, 3, 1, 0, 0, 1, 2, 2]),
-        EQPreset(name: "Aigus adoucis", gains: [0, 0, 0, 0, 0, 0, -1, -3, -3, -2]),
+    /// Préréglages fournis, par catégorie (gains des 10 bandes : 32, 64, 125, 250, 500, 1k, 2k, 4k, 8k, 16k Hz).
+    static let presetGroups: [(title: String, presets: [EQPreset])] = [
+        (String(localized: "Essentiels"), [
+            EQPreset(name: "Plat", gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+            EQPreset(name: "Basses renforcées", gains: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0]),
+            EQPreset(name: "Aigus renforcés", gains: [0, 0, 0, 0, 0, 1, 2, 4, 5, 6]),
+            EQPreset(name: "Aigus adoucis", gains: [0, 0, 0, 0, 0, 0, -1, -3, -3, -2]),
+            EQPreset(name: "Voix", gains: [-2, -2, -1, 1, 3, 4, 3, 1, 0, -1]),
+            EQPreset(name: "Loudness", gains: [6, 4, 1, 0, -1, -1, 0, 1, 3, 5]),
+            // Petits haut-parleurs : pas de grave profond (qu'ils ne peuvent pas rendre), plutôt le haut-grave.
+            EQPreset(name: "Petits haut-parleurs", gains: [0, 2, 4, 3, 1, 0, 0, 1, 2, 2]),
+        ]),
+        (String(localized: "Genres"), [
+            EQPreset(name: "Rock", gains: [5, 4, 2, 0, -1, -1, 1, 3, 4, 5]),
+            EQPreset(name: "Pop", gains: [-1, 0, 2, 3, 4, 3, 1, 0, -1, -1]),
+            EQPreset(name: "Jazz", gains: [3, 2, 1, 2, -1, -1, 0, 1, 2, 3]),
+            EQPreset(name: "Classique", gains: [4, 3, 2, 1, 0, 0, 0, 1, 2, 3]),
+            EQPreset(name: "Électro", gains: [5, 4, 1, 0, -2, 1, 0, 1, 4, 5]),
+            EQPreset(name: "Hip-hop", gains: [6, 5, 2, 1, -1, -1, 1, 1, 2, 3]),
+            EQPreset(name: "R&B", gains: [5, 6, 3, -1, -2, 1, 2, 2, 3, 3]),
+            EQPreset(name: "Métal", gains: [4, 3, 1, -1, -2, 0, 2, 4, 4, 3]),
+            EQPreset(name: "Acoustique", gains: [3, 2, 1, 1, 2, 1, 2, 3, 2, 1]),
+            EQPreset(name: "Piano", gains: [1, 1, 0, 2, 3, 1, 3, 4, 3, 2]),
+            EQPreset(name: "Lounge", gains: [-2, -1, 0, 2, 3, 2, 0, -1, 1, 1]),
+            EQPreset(name: "Latino", gains: [3, 2, 0, 0, -1, -1, -1, 0, 3, 4]),
+        ]),
+        (String(localized: "Antilles"), [
+            // Zouk : basse ronde, voix douces et présentes.
+            EQPreset(name: "Zouk", gains: [4, 4, 2, 0, -1, 1, 2, 2, 3, 3]),
+            // Kompa : groove chaloupé, basse et guitares.
+            EQPreset(name: "Kompa", gains: [4, 3, 2, 1, 0, 1, 1, 2, 2, 2]),
+            // Gwoka : tambours ka, frappe et résonance.
+            EQPreset(name: "Gwoka", gains: [5, 4, 2, 0, -1, 0, 2, 3, 2, 1]),
+            // Biguine : clarinette, cuivres et banjo dans le médium.
+            EQPreset(name: "Biguine", gains: [1, 1, 1, 2, 3, 3, 2, 2, 1, 0]),
+        ]),
+        (String(localized: "Caraïbes"), [
+            // Reggae : basse profonde, médium en retrait.
+            EQPreset(name: "Reggae", gains: [6, 5, 3, 0, -2, -1, 0, 1, 1, 1]),
+            EQPreset(name: "Dancehall", gains: [6, 6, 3, 0, -2, 0, 2, 2, 3, 3]),
+            EQPreset(name: "Soca", gains: [4, 4, 2, 0, -1, 1, 2, 3, 4, 4]),
+            // Calypso : steel drums dans le haut-médium.
+            EQPreset(name: "Calypso", gains: [2, 2, 1, 0, 1, 2, 3, 3, 3, 2]),
+        ]),
+        (String(localized: "Afrique"), [
+            EQPreset(name: "Afrobeat", gains: [4, 4, 2, 1, 0, 1, 2, 3, 3, 2]),
+            // Amapiano : « log drum » très grave.
+            EQPreset(name: "Amapiano", gains: [6, 6, 3, 0, -2, -1, 1, 2, 3, 2]),
+            EQPreset(name: "Coupé-décalé", gains: [4, 4, 2, 0, -1, 1, 3, 3, 4, 3]),
+            // Rumba congolaise : guitares en avant.
+            EQPreset(name: "Rumba congolaise", gains: [3, 2, 1, 1, 2, 2, 3, 3, 2, 1]),
+            // Mandingue : kora et balafon, détails dans les aigus.
+            EQPreset(name: "Mandingue", gains: [0, 0, 1, 2, 2, 2, 3, 4, 3, 2]),
+        ]),
+        (String(localized: "Amérique du Sud"), [
+            EQPreset(name: "Salsa", gains: [3, 3, 1, 0, 0, 1, 3, 3, 4, 4]),
+            EQPreset(name: "Samba", gains: [3, 3, 2, 0, -1, 1, 2, 3, 4, 4]),
+            EQPreset(name: "Bossa nova", gains: [1, 1, 1, 2, 2, 1, 1, 2, 2, 1]),
+            EQPreset(name: "Reggaeton", gains: [6, 6, 3, 0, -2, 0, 2, 2, 3, 2]),
+            EQPreset(name: "Cumbia", gains: [3, 3, 1, 1, 0, 1, 2, 3, 3, 3]),
+            // Tango : bandonéon et violons dans le médium.
+            EQPreset(name: "Tango", gains: [1, 1, 1, 2, 3, 3, 2, 2, 1, 0]),
+        ]),
+        (String(localized: "Usages"), [
+            EQPreset(name: "Podcast", gains: [-6, -4, -1, 1, 3, 4, 3, 1, -1, -3]),
+            EQPreset(name: "Cinéma", gains: [5, 4, 2, 0, -1, 1, 2, 2, 3, 2]),
+            EQPreset(name: "Jeux vidéo", gains: [3, 3, 1, 0, -1, 1, 3, 4, 3, 2]),
+        ]),
     ]
+
+    /// Tous les préréglages fournis, dans l'ordre des catégories (« Plat » en premier).
+    static let presets: [EQPreset] = presetGroups.flatMap(\.presets)
 
     // MARK: Réglage principal
 

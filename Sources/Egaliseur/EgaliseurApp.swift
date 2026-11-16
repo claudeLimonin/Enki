@@ -116,7 +116,13 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(toggle(String(localized: "Égaliseur activé"), model.enabled) { $0.model.enabled.toggle() })
         let presets = NSMenu()
-        for p in EQModel.presets { presets.addItem(presetItem(p)) }
+        for g in EQModel.presetGroups {
+            let sub = NSMenu()
+            for p in g.presets { sub.addItem(presetItem(p)) }
+            let item = submenu(g.title, sub)
+            if g.presets.contains(where: { $0.name == model.selectedPreset }) { item.state = .mixed }
+            presets.addItem(item)
+        }
         if !model.userPresets.isEmpty {
             presets.addItem(.separator())
             presets.addItem(header(String(localized: "Mes préréglages")))

@@ -64,7 +64,7 @@ struct PresetControls: View {
                 get: { model.selectedPreset ?? "" },
                 set: { name in if let p = model.preset(named: name) { model.apply(p) } })) {
                 if model.selectedPreset == nil { Text(EQModel.customDisplayName).tag("") }
-                Section("Préréglages") { ForEach(EQModel.presets) { item($0) } }
+                ForEach(EQModel.presetGroups, id: \.title) { g in Section(g.title) { ForEach(g.presets) { item($0) } } }
                 if !model.userPresets.isEmpty {
                     Section("Mes préréglages") { ForEach(model.userPresets) { item($0) } }
                 }
@@ -257,8 +257,10 @@ struct EqualizerPage: View {
             set: { if !model.setChoice($0, for: app) { limitReached = true } })) {
             Text("Égaliseur principal").tag(AppChoice.main)
             Text("Sans égaliseur").tag(AppChoice.bypass)
-            Section("Préréglages") {
-                ForEach(EQModel.presets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
+            ForEach(EQModel.presetGroups, id: \.title) { g in
+                Section(g.title) {
+                    ForEach(g.presets) { Text($0.displayName).tag(AppChoice.preset($0.name)) }
+                }
             }
             if !model.userPresets.isEmpty {
                 Section("Mes préréglages") {
