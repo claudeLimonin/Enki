@@ -7,6 +7,7 @@ import SwiftUI
 struct HeadphonesPage: View {
     @EnvironmentObject var model: EQModel
     @StateObject private var search = HeadphoneSearch()
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
@@ -28,13 +29,34 @@ struct HeadphonesPage: View {
             .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Trouver mon casque").fontWeight(.semibold)
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField("Marque ou modèle (ex. AirPods Pro, HD 650)", text: $search.query)
+                            .textFieldStyle(.plain)
+                            .focused($searchFocused)
+                        if !search.query.isEmpty {
+                            Button { search.query = "" } label: { Image(systemName: "xmark.circle.fill") }
+                                .buttonStyle(.plain).foregroundStyle(.secondary)
+                                .accessibilityLabel("Effacer la recherche")
+                        }
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 7))
+                    .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.separator))
+                }
                 if search.loadingIndex {
                     ProgressView("Chargement de la liste des casques…").controlSize(.small)
                 }
                 if let error = search.error {
                     Text(error).font(.callout).foregroundStyle(.red)
                 }
-                results
+                if search.query.isEmpty {
+                    emptyState
+                } else {
+                    results
+                }
                 Text("8 850 profils AutoEQ. Les mesures oratory1990 et crinacle sont les plus fiables.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -47,8 +69,18 @@ struct HeadphonesPage: View {
         }
         .padding(20)
         .navigationTitle("Casque")
-        .searchable(text: $search.query, placement: .toolbar, prompt: Text("Rechercher un casque"))
-        .onAppear { search.prepare() }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Toggle("Égaliseur", isOn: $model.enabled)
+                    .toggleStyle(.switch)
+                    .help(model.enabled ? "Couper l'égaliseur" : "Activer l'égaliseur")
+            }
+        }
+        .onAppear {
+            search.prepare()
+            // Sans correction : on invite directement à chercher.
+            if model.correction == nil { searchFocused = true }
+        }
     }
 
     // MARK: Sortie actuelle
@@ -101,10 +133,7 @@ struct HeadphonesPage: View {
         let recommended = search.results.filter { AutoEQ.isRecommended($0.source) }
         let others = search.results.filter { !AutoEQ.isRecommended($0.source) }
         return List {
-            if search.query.isEmpty {
-                Text("Tapez le nom de votre casque dans le champ de recherche, en haut à droite.")
-                    .foregroundStyle(.secondary)
-            } else if search.results.isEmpty && !search.loadingIndex {
+            if search.results.isEmpty && !search.loadingIndex {
                 Text("Aucun casque trouvé. Essayez avec moins de mots (ex. « HD 650 »).").foregroundStyle(.secondary)
             }
             if !recommended.isEmpty {
@@ -118,6 +147,35 @@ struct HeadphonesPage: View {
         .frame(minHeight: 200, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
+    }
+
+    /// Avant toute recherche : une invite courte, et le nom de la sortie actuelle comme suggestion.
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Choisissez votre casque parmi les profils mesurés : son rendu devient plus neutre.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let suggestion = suggestedQuery {
+                Button {
+                    search.query = suggestion
+                } label: {
+                    Label("Chercher « \(suggestion) »", systemImage: "magnifyingglass")
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// Nom de la sortie sans le nom du propriétaire (« AirPods Pro de Claude » → « AirPods Pro »).
+    private var suggestedQuery: String? {
+        guard var name = model.currentDevice?.name, !name.isEmpty else { return nil }
+        for sep in [" de ", " d’", " d'", "’s ", "'s "] {
+            if let r = name.range(of: sep) { name = String(sep.hasSuffix("s ") ? name[r.upperBound...] : name[..<r.lowerBound]) }
+        }
+        let builtIn = ["MacBook", "Haut-parleurs", "Speakers", "iMac", "Studio Display"]
+        return builtIn.contains(where: name.contains) ? nil : name.trimmingCharacters(in: .whitespaces)
     }
 
     private var remembered: some View {

@@ -415,3 +415,7 @@
 "8 850 profils AutoEQ. Les mesures oratory1990 et crinacle sont les plus fiables." = "8,850 AutoEQ profiles. oratory1990 and crinacle measurements are the most reliable.";
 "sans correction" = "no correction";
 "Rendu du casque, correction et résultat" = "Headphone response, correction and result";
+"Marque ou modèle (ex. AirPods Pro, HD 650)" = "Brand or model (e.g. AirPods Pro, HD 650)";
+"Effacer la recherche" = "Clear search";
+"Choisissez votre casque parmi les profils mesurés : son rendu devient plus neutre." = "Pick your headphones from the measured profiles: their sound becomes more neutral.";
+"Chercher « %@ »" = "Search “%@”";
